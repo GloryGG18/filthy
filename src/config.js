@@ -10,7 +10,8 @@ const cents = (v, d) => Math.round(Number(v ?? d) * 100);
 
 export const config = {
   port: Number(env.PORT || 3000),
-  publicUrl: (env.PUBLIC_URL || 'http://localhost:3000').replace(/\/$/, ''),
+  // On Railway the generated domain arrives as RAILWAY_PUBLIC_DOMAIN, so PUBLIC_URL can be left out there.
+  publicUrl: (env.PUBLIC_URL || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000')).replace(/\/$/, ''),
   dataDir: path.resolve(env.DATA_DIR || './data'),
 
   botToken: env.BOT_TOKEN || '',
