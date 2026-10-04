@@ -37,8 +37,11 @@ const T = {
     buy: 'Buy a ticket',
   },
 };
-export const langOf = (code) => (code?.startsWith('uk') ? 'uk' : ['ru', 'be', 'kk'].some((l) => code?.startsWith(l)) ? 'ru' : code ? 'en' : 'uk');
-const tr = (user) => T[langOf(user?.lang)];
+// Russian is the default; a guest switches language in the app or with /lang.
+export const LANGS = ['ru', 'uk', 'en'];
+const LANG_NAMES = { ru: '🇷🇺 Русский', uk: '🇺🇦 Українська', en: '🇬🇧 English' };
+const tr = (user) => T[LANGS.includes(user?.ui_lang) ? user.ui_lang : 'ru'];
+const langKeyboard = () => LANGS.reduce((kb, l) => kb.text(LANG_NAMES[l], `lang:${l}`), new InlineKeyboard());
 
 const eur = (c) => `${(c / 100).toFixed(c % 100 ? 2 : 0)} €`;
 const fmtTime = (ms) => new Date(ms).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: config.timezone });
@@ -66,6 +69,18 @@ async function safeSend(chatId, fn) {
 if (bot) {
   bot.command('start', async (ctx) => {
     const user = upsertUser(ctx.from, { botStarted: true });
+    await ctx.reply(tr(user).welcome, { reply_markup: appButton(user) });
+    if (!user.ui_lang) await ctx.reply('🌐 Выбери язык · Обери мову · Choose language', { reply_markup: langKeyboard() });
+  });
+
+  bot.command('lang', (ctx) => ctx.reply('🌐 Выбери язык · Обери мову · Choose language', { reply_markup: langKeyboard() }));
+
+  bot.callbackQuery(/^lang:(ru|uk|en)$/, async (ctx) => {
+    upsertUser(ctx.from, { botStarted: true });
+    run('UPDATE users SET ui_lang = ? WHERE tg_id = ?', ctx.match[1], ctx.from.id);
+    const user = get('SELECT * FROM users WHERE tg_id = ?', ctx.from.id);
+    await ctx.answerCallbackQuery({ text: LANG_NAMES[ctx.match[1]] });
+    await ctx.editMessageText(`🌐 ${LANG_NAMES[ctx.match[1]]}`).catch(() => {});
     await ctx.reply(tr(user).welcome, { reply_markup: appButton(user) });
   });
 

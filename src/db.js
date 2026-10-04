@@ -111,6 +111,10 @@ CREATE TABLE IF NOT EXISTS cash_counts (
 );
 `);
 
+// Migrations for databases created by earlier versions.
+const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
+if (!userCols.includes('ui_lang')) db.exec('ALTER TABLE users ADD COLUMN ui_lang TEXT'); // language the user picked; NULL = default (ru)
+
 export const now = () => Date.now();
 
 export function tx(fn) {

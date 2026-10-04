@@ -178,11 +178,12 @@ export const errors = {
   en: { sold_out: 'Sold out', sales_closed: 'Sales are closed', not_payable: 'This ticket can’t be paid', unauthorized: 'Open the app via the Telegram bot', file_too_large: 'File too large (max 10 MB)', bad_file_type: 'Use a JPG or PNG image', user_not_found: 'User not found. They need to open the bot first.', publish_first: 'Publish the event first', bad_iban: 'Invalid IBAN', bad_url: 'Link must start with https://', bad_tolerance: 'Share must be between 0 and 1', monobank_unreachable: 'monobank is unreachable or the token is wrong' },
 };
 
-export function pickLang(code) {
+export const LANG_NAMES = { ru: 'Русский', uk: 'Українська', en: 'English' };
+export const LANG_FLAGS = { ru: '🇷🇺', uk: '🇺🇦', en: '🇬🇧' };
+
+// Russian unless the guest picked something (saved on this device and on the server).
+export function pickLang(serverLang) {
   const saved = (() => { try { return localStorage.getItem('lang'); } catch { return null; } })();
   if (saved && dict[saved]) return saved;
-  if (!code) return 'uk';
-  if (code.startsWith('uk')) return 'uk';
-  if (['ru', 'be', 'kk'].some((l) => code.startsWith(l))) return 'ru';
-  return 'en';
+  return dict[serverLang] ? serverLang : 'ru';
 }

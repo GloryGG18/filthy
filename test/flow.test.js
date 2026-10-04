@@ -230,3 +230,14 @@ test('placeholders from .env.example are ignored and a QR secret is generated on
     { env: { PATH: process.env.PATH, PUBLIC_URL: 'filthy-production-c5e2.up.railway.app', DATA_DIR: dir2 } }).toString().trim();
   assert.equal(bare, 'https://filthy-production-c5e2.up.railway.app');
 });
+
+test('Russian is the default language and a guest can switch it', async () => {
+  const me = (await call(20, 'GET', '/api/me')).body;
+  assert.equal(me.user.lang, 'ru');
+  assert.equal(me.user.lang_chosen, false);
+  assert.equal((await call(20, 'PUT', '/api/me/lang', { lang: 'de' })).status, 400);
+  await call(20, 'PUT', '/api/me/lang', { lang: 'uk' });
+  const after = (await call(20, 'GET', '/api/me')).body;
+  assert.equal(after.user.lang, 'uk');
+  assert.equal(after.user.lang_chosen, true);
+});

@@ -1,4 +1,4 @@
-import { dict, errors, pickLang } from './i18n.js';
+import { dict, errors, pickLang, LANG_NAMES, LANG_FLAGS } from './i18n.js';
 
 const tg = window.Telegram?.WebApp;
 const inTg = !!tg?.initData; // the SDK object also exists in a plain browser, but without initData
@@ -8,8 +8,8 @@ tg?.setHeaderColor?.('#0a0a0a');
 tg?.setBackgroundColor?.('#0a0a0a');
 
 const TZ = 'Europe/Bratislava';
-const LANGS = ['uk', 'ru', 'en'];
-let lang = pickLang(tg?.initDataUnsafe?.user?.language_code);
+const LANGS = ['ru', 'uk', 'en'];
+let lang = pickLang();
 let t = dict[lang];
 let me = null;
 let cleanup = [];
@@ -710,26 +710,43 @@ async function route() {
   window.scrollTo(0, 0);
 }
 
-function setLang(l) {
+const langButton = () => { document.getElementById('lang').textContent = `${LANG_FLAGS[lang]} ${lang.toUpperCase()} ▾`; };
+
+function setLang(l, { save = true } = {}) {
   lang = l; t = dict[l];
   try { localStorage.setItem('lang', l); } catch { /* ignore */ }
   document.documentElement.lang = l;
-  document.getElementById('lang').textContent = l;
+  langButton();
+  // Saved on the server too, so the bot writes to this guest in the same language.
+  if (save && me) api('/api/me/lang', { method: 'PUT', body: { lang: l } }).catch(() => {});
   route();
 }
 
+function openLangPicker() {
+  const sheet = h('div', { class: 'sheet-backdrop', onclick: (e) => { if (e.target === sheet) sheet.remove(); } },
+    h('div', { class: 'sheet' },
+      h('h3', { class: 'center' }, '🌐 Язык · Мова · Language'),
+      LANGS.map((l) => h('button', { class: `btn ${l === lang ? '' : 'secondary'}`, onclick: () => { sheet.remove(); setLang(l); } },
+        `${LANG_FLAGS[l]}  ${LANG_NAMES[l]}`))));
+  document.body.append(sheet);
+}
+
 tg?.BackButton?.onClick(() => history.back());
-document.getElementById('lang').onclick = () => setLang(LANGS[(LANGS.indexOf(lang) + 1) % LANGS.length]);
+document.getElementById('lang').onclick = openLangPicker;
 window.addEventListener('hashchange', route);
 
 (async () => {
-  document.getElementById('lang').textContent = lang;
+  langButton();
   document.documentElement.lang = lang;
   try {
     me = await api('/api/me');
   } catch (e) {
     return render(h('div', { class: 'card center' }, h('h2', {}, 'Filthy'), h('p', { class: 'muted' }, e.message)));
   }
+  const local = (() => { try { return localStorage.getItem('lang'); } catch { return null; } })();
+  if (me.user.lang_chosen && !local && me.user.lang !== lang) setLang(me.user.lang, { save: false });
+  else if (local && local !== me.user.lang) api('/api/me/lang', { method: 'PUT', body: { lang: local } }).catch(() => {});
+  if (!me.user.lang_chosen && !local) openLangPicker(); // first visit: ask once, Russian stays preselected
   // Deep link from the bot: t.me/<bot>?startapp=event_5
   const start = tg?.initDataUnsafe?.start_param;
   if (start && !location.hash) location.hash = start.replace('_', '/');

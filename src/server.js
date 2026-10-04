@@ -18,7 +18,7 @@ import { submitProof, reviewProof } from './repost.js';
 import { payBySquare } from './payments/paybysquare.js';
 import { eurUahRate, monoInfo, handleMonoWebhook, registerMonoWebhook, listMonoJars } from './payments/monobank.js';
 import { readSettings, saveSettings, BANK_PROVIDERS } from './settings.js';
-import { bot, broadcastEvent, sendCsv, tgWebhookSecret } from './bot.js';
+import { bot, broadcastEvent, sendCsv, tgWebhookSecret, LANGS } from './bot.js';
 
 const UPLOADS = path.join(config.dataDir, 'uploads');
 const IMAGE_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic' };
@@ -114,7 +114,7 @@ export async function buildServer() {
 
   // ----- guest -----
   app.get('/api/me', guest, async (req) => ({
-    user: { id: req.user.tg_id, name: displayName(req.user), username: req.user.username, lang: req.user.lang, role: req.user.role },
+    user: { id: req.user.tg_id, name: displayName(req.user), username: req.user.username, lang: req.user.ui_lang || 'ru', lang_chosen: !!req.user.ui_lang, role: req.user.role },
     settings: {
       instagram: config.instagramHandle,
       min_followers: config.minFollowers,
@@ -122,6 +122,13 @@ export async function buildServer() {
       methods: { paybysquare: !!config.payBySquare.iban, monobank: !!config.monobank.jarUrl },
     },
   }));
+
+  app.put('/api/me/lang', guest, async (req) => {
+    const lang = req.body?.lang;
+    if (!LANGS.includes(lang)) throw new AppError('bad_lang');
+    run('UPDATE users SET ui_lang = ? WHERE tg_id = ?', lang, req.user.tg_id);
+    return { lang };
+  });
 
   app.get('/api/events', guest, async () =>
     all(`SELECT * FROM events WHERE status = 'published' AND starts_at > ? ORDER BY starts_at`, now() - 12 * 3600_000).map(publicEvent));
