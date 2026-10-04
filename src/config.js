@@ -70,7 +70,7 @@ export const config = {
 // A public deployment must not run with the default QR secret (anyone could forge tickets)
 // or with dev login enabled (anyone could pose as any user).
 if (config.publicUrl.startsWith('https://')) {
-  if (!env.QR_SECRET || env.QR_SECRET.length < 16) throw new Error('Set QR_SECRET to a random string of 16+ characters');
+  if (!env.QR_SECRET || env.QR_SECRET.length < 16 || /change-me/.test(env.QR_SECRET)) throw new Error('Set QR_SECRET to a random string of 16+ characters');
   if (config.devAuth) throw new Error('DEV_AUTH must be off on a public deployment');
 }
 
