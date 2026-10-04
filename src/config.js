@@ -4,15 +4,35 @@ import path from 'node:path';
 
 if (fs.existsSync('.env')) process.loadEnvFile('.env');
 
-const env = process.env;
+// Values copied verbatim from .env.example (Railway imports them as suggestions) count as unset.
+const PLACEHOLDER = /example\.sk|change-me|from-BotFather|^111111111$|XXXXXX|^SK00 0000/;
+const env = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== '' && !PLACEHOLDER.test(v)));
 const list = (v) => (v || '').split(',').map((s) => s.trim()).filter(Boolean);
 const cents = (v, d) => Math.round(Number(v ?? d) * 100);
+
+// Railway exposes the attached volume's mount path; prefer it so data always lands on the volume.
+const dataDir = path.resolve(env.RAILWAY_VOLUME_MOUNT_PATH || env.DATA_DIR || './data');
+
+// Without QR_SECRET, generate one once and keep it next to the database, so it survives restarts.
+function loadQrSecret() {
+  if (env.QR_SECRET) return env.QR_SECRET;
+  const file = path.join(dataDir, '.qr-secret');
+  try {
+    return fs.readFileSync(file, 'utf8').trim();
+  } catch {
+    const secret = crypto.randomBytes(32).toString('base64url');
+    fs.mkdirSync(dataDir, { recursive: true });
+    fs.writeFileSync(file, secret, { mode: 0o600 });
+    return secret;
+  }
+}
+const qrSecret = loadQrSecret();
 
 export const config = {
   port: Number(env.PORT || 3000),
   // On Railway the generated domain arrives as RAILWAY_PUBLIC_DOMAIN, so PUBLIC_URL can be left out there.
   publicUrl: (env.PUBLIC_URL || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000')).replace(/\/$/, ''),
-  dataDir: path.resolve(env.DATA_DIR || './data'),
+  dataDir,
 
   botToken: env.BOT_TOKEN || '',
   // Telegram IDs that are always admins (others can be promoted from the app).
@@ -20,7 +40,7 @@ export const config = {
   // Chat where repost screenshots arrive for one-tap approval (a group or an admin's private chat).
   adminChatId: env.ADMIN_CHAT_ID ? Number(env.ADMIN_CHAT_ID) : null,
   // Signs QR codes. Must stay secret and stable, or issued QR codes stop working.
-  qrSecret: env.QR_SECRET || 'dev-secret-change-me',
+  qrSecret,
   // Local testing in a plain browser without Telegram (X-Dev-User header). Never enable in production.
   devAuth: env.DEV_AUTH === '1',
 
@@ -61,18 +81,14 @@ export const config = {
     // Used when the monobank rate API is unreachable.
     fallbackRate: Number(env.MONO_FALLBACK_RATE || 48),
     // monobank webhooks are unsigned, so the secret URL path is what stops forged "payments".
-    webhookSecret: env.MONO_WEBHOOK_SECRET || crypto.createHash('sha256').update(`${env.QR_SECRET || 'dev'}:mono`).digest('hex').slice(0, 24),
+    webhookSecret: env.MONO_WEBHOOK_SECRET || crypto.createHash('sha256').update(`${qrSecret}:mono`).digest('hex').slice(0, 24),
   },
 
   reminderHour: Number(env.REMINDER_HOUR || 12),
   timezone: env.TZ || 'Europe/Bratislava',
 };
 
-// A public deployment must not run with the default QR secret (anyone could forge tickets)
-// or with dev login enabled (anyone could pose as any user).
-if (config.publicUrl.startsWith('https://')) {
-  if (!env.QR_SECRET || env.QR_SECRET.length < 16 || /change-me/.test(env.QR_SECRET)) throw new Error('Set QR_SECRET to a random string of 16+ characters');
-  if (config.devAuth) throw new Error('DEV_AUTH must be off on a public deployment');
-}
+// Dev login lets anyone pose as any user, so it must never run on a public address.
+if (config.publicUrl.startsWith('https://') && config.devAuth) throw new Error('DEV_AUTH must be off on a public deployment');
 
 export const isAdminId = (id) => config.adminIds.includes(Number(id));

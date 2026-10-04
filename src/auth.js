@@ -28,19 +28,22 @@ export function verifyInitData(initData, botToken = config.botToken) {
 
 export function upsertUser(tg, { botStarted = false } = {}) {
   const existing = get('SELECT * FROM users WHERE tg_id = ?', tg.id);
+  // With no ADMIN_IDS configured, the first person to /start the bot becomes its admin.
+  const claimAdmin = botStarted && !config.adminIds.length && !get(`SELECT 1 FROM users WHERE role = 'admin'`);
+  if (claimAdmin) console.log(`first admin claimed by Telegram user ${tg.id}`);
   if (!existing) {
     run(
       `INSERT INTO users (tg_id, username, first_name, last_name, lang, role, bot_started, created_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       tg.id, tg.username ?? null, tg.first_name ?? null, tg.last_name ?? null, tg.language_code ?? null,
-      isAdminId(tg.id) ? 'admin' : 'guest', botStarted ? 1 : 0, now(),
+      isAdminId(tg.id) || claimAdmin ? 'admin' : 'guest', botStarted ? 1 : 0, now(),
     );
   } else {
     run(
       `UPDATE users SET username = ?, first_name = ?, last_name = ?, lang = COALESCE(?, lang),
        bot_started = MAX(bot_started, ?), role = CASE WHEN ? THEN 'admin' ELSE role END WHERE tg_id = ?`,
       tg.username ?? null, tg.first_name ?? null, tg.last_name ?? null, tg.language_code ?? null,
-      botStarted ? 1 : 0, isAdminId(tg.id) ? 1 : 0, tg.id,
+      botStarted ? 1 : 0, isAdminId(tg.id) || claimAdmin ? 1 : 0, tg.id,
     );
   }
   return get('SELECT * FROM users WHERE tg_id = ?', tg.id);

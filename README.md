@@ -79,6 +79,6 @@ test/             наскрізний тест
 ## Деплой на Railway
 
 1. Новий проєкт → Deploy from GitHub repo → цей репозиторій (збирається з `Dockerfile`).
-2. Додати Volume з точкою монтування `/data` (там база і скріншоти; без тому дані зникнуть при перезапуску).
-3. Settings → Networking → Generate Domain; цю адресу вписати в `PUBLIC_URL`.
-4. Variables: усе з `.env.example`, щонайменше `BOT_TOKEN`, `PUBLIC_URL`, `ADMIN_IDS`, `QR_SECRET`, `PBS_IBAN`, `PBS_BENEFICIARY`, `MONO_JAR_URL`.
+2. Settings → Networking → **Generate Domain** (порт 3000). Адресу застосунок візьме сам.
+3. **+ Add → Volume**, прикріпити до сервісу (точка монтування будь-яка, наприклад `/data`); застосунок сам знайде шлях.
+4. Variables: достатньо одного `BOT_TOKEN`. Заглушки з `.env.example` ігноруються, `QR_SECRET` генерується і зберігається на томі, а адміном стає перша людина, що напише боту `/start` (якщо `ADMIN_IDS` не задано).

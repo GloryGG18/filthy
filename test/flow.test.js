@@ -211,3 +211,19 @@ test('admin changes payment settings at runtime; secrets stay hidden', async () 
   await call(ADMIN, 'PUT', '/api/admin/settings', { values: { bank_provider: 'none' }, clear: ['fio_token'] });
   assert.equal((await call(ADMIN, 'GET', '/api/admin/settings')).body.values.fio_token.set, false);
 });
+
+test('placeholders from .env.example are ignored and a QR secret is generated once', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'filthy-cfg-'));
+  const read = () => execFileSync(process.execPath, ['--no-warnings', '-e',
+    "import('./src/config.js').then(({config:c})=>console.log(JSON.stringify([c.publicUrl,c.botToken,c.adminIds,c.qrSecret,c.dataDir])))"],
+  { env: { PATH: process.env.PATH, PUBLIC_URL: 'https://tickets.example.sk', RAILWAY_PUBLIC_DOMAIN: 'filthy.up.railway.app', BOT_TOKEN: '123456:ABC-from-BotFather',
+    ADMIN_IDS: '111111111', QR_SECRET: 'change-me-to-a-long-random-string', DATA_DIR: './data', RAILWAY_VOLUME_MOUNT_PATH: dir2 } }).toString();
+  const [url, token, admins, secret, data] = JSON.parse(read());
+  assert.equal(url, 'https://filthy.up.railway.app');
+  assert.equal(token, '');
+  assert.deepEqual(admins, []);
+  assert.equal(data, dir2);
+  assert.ok(secret.length >= 32);
+  assert.equal(JSON.parse(read())[3], secret, 'generated secret is stable across restarts');
+});
