@@ -240,6 +240,8 @@ test('Russian is the default language and a guest can switch it', async () => {
   const after = (await call(20, 'GET', '/api/me')).body;
   assert.equal(after.user.lang, 'uk');
   assert.equal(after.user.lang_chosen, true);
+  await call(20, 'PUT', '/api/me/lang', { lang: 'sk' });
+  assert.equal((await call(20, 'GET', '/api/me')).body.user.lang, 'sk', 'Slovak is available');
 });
 
 test('admin removes a poster and deletes an event only while nothing is paid', async () => {

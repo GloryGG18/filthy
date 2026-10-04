@@ -9,7 +9,7 @@ tg?.setBackgroundColor?.('#000000');
 tg?.setBottomBarColor?.('#000000');
 
 const TZ = 'Europe/Bratislava';
-const LANGS = ['ru', 'uk', 'en'];
+const LANGS = ['ru', 'uk', 'sk', 'en'];
 let lang = pickLang();
 let t = dict[lang];
 let me = null;
@@ -60,8 +60,8 @@ async function api(path, opts = {}) {
 }
 
 const eur = (c) => `${(c / 100).toFixed(c % 100 ? 2 : 0)} €`;
-const uah = (k) => `${Math.round(k / 100).toLocaleString('uk-UA')} ₴`;
-const locale = () => ({ uk: 'uk-UA', ru: 'ru-RU', en: 'en-GB' })[lang];
+const uah = (k) => `${(k / 100).toLocaleString('uk-UA', { minimumFractionDigits: k % 100 ? 2 : 0, maximumFractionDigits: 2 })} ₴`;
+const locale = () => ({ uk: 'uk-UA', ru: 'ru-RU', sk: 'sk-SK', en: 'en-GB' })[lang];
 const fmtDate = (ms) => new Date(ms).toLocaleString(locale(), { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: TZ });
 const fmtTime = (ms) => new Date(ms).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit', timeZone: TZ });
 
@@ -797,7 +797,7 @@ function setLang(l, { save = true } = {}) {
 function openLangPicker() {
   const sheet = h('div', { class: 'sheet-backdrop', onclick: (e) => { if (e.target === sheet) sheet.remove(); } },
     h('div', { class: 'sheet' },
-      h('h3', { class: 'center' }, '🌐 Язык · Мова · Language'),
+      h('h3', { class: 'center' }, '🌐 Язык · Мова · Jazyk · Language'),
       LANGS.map((l) => h('button', { class: `btn ${l === lang ? '' : 'secondary'}`, onclick: () => { sheet.remove(); setLang(l); } },
         `${LANG_FLAGS[l]}  ${LANG_NAMES[l]}`))));
   document.body.append(sheet);
