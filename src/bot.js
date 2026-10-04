@@ -17,6 +17,18 @@ const T = {
     rejected: (ev) => `❌ Репост для «${ev}» не підтверджено. Можна надіслати інші скріншоти або купити звичайний онлайн-квиток.`,
     reminder: (ev, time) => `🔥 Сьогодні «${ev}», початок о ${time}. Твій QR у «Моїх квитках».`,
     buy: 'Купити квиток',
+    a_only_admins: 'Тільки для адмінів',
+    a_approved: '✅ Схвалено',
+    a_rejected: '❌ Відхилено',
+    a_done: 'Вже розглянуто',
+    a_proof: (o) => `📸 Репост на знижку ${o.price}\n${o.event}\nГість: ${o.guest}\nInstagram: ${o.instagram}\nКвиток ${o.code}\n\nПеревір: відмітка ${o.handle} у сторіс і ${o.min}+ підписників.`,
+    a_approve: '✅ Схвалити',
+    a_reject: '❌ Відхилити',
+    a_underpaid: 'сума менша за ціну квитка',
+    a_duplicate: 'квиток уже оплачено (дубль)',
+    a_no_code: 'не знайдено номер квитка',
+    a_payment: (o) => `⚠️ Платіж на ручну перевірку (${o.source}): ${o.amount}, «${o.reference}», ${o.payer}\nПричина: ${o.why}`,
+    a_report: (ev) => `Звіт: ${ev}`,
   },
   ru: {
     welcome: 'Привет! Это билеты на вечеринки Filthy 🖤\nОнлайн дешевле, чем на входе, а QR-билет всегда под рукой.',
@@ -26,6 +38,18 @@ const T = {
     rejected: (ev) => `❌ Репост для «${ev}» не подтверждён. Можно отправить другие скриншоты или купить обычный онлайн-билет.`,
     reminder: (ev, time) => `🔥 Сегодня «${ev}», начало в ${time}. Твой QR в «Моих билетах».`,
     buy: 'Купить билет',
+    a_only_admins: 'Только для админов',
+    a_approved: '✅ Одобрено',
+    a_rejected: '❌ Отклонено',
+    a_done: 'Уже рассмотрено',
+    a_proof: (o) => `📸 Репост на скидку ${o.price}\n${o.event}\nГость: ${o.guest}\nInstagram: ${o.instagram}\nБилет ${o.code}\n\nПроверь: отметка ${o.handle} в сторис и ${o.min}+ подписчиков.`,
+    a_approve: '✅ Одобрить',
+    a_reject: '❌ Отклонить',
+    a_underpaid: 'сумма меньше цены билета',
+    a_duplicate: 'билет уже оплачен (дубль)',
+    a_no_code: 'не найден номер билета',
+    a_payment: (o) => `⚠️ Платёж на ручную проверку (${o.source}): ${o.amount}, «${o.reference}», ${o.payer}\nПричина: ${o.why}`,
+    a_report: (ev) => `Отчёт: ${ev}`,
   },
   en: {
     welcome: 'Hi! These are tickets for Filthy parties 🖤\nOnline is cheaper than at the door, and your QR ticket is always at hand.',
@@ -35,17 +59,32 @@ const T = {
     rejected: (ev) => `❌ Your repost for “${ev}” wasn't approved. Send other screenshots or buy a regular online ticket.`,
     reminder: (ev, time) => `🔥 “${ev}” is tonight, starting at ${time}. Your QR is in “My tickets”.`,
     buy: 'Buy a ticket',
+    a_only_admins: 'Admins only',
+    a_approved: '✅ Approved',
+    a_rejected: '❌ Rejected',
+    a_done: 'Already reviewed',
+    a_proof: (o) => `📸 Repost discount ${o.price}\n${o.event}\nGuest: ${o.guest}\nInstagram: ${o.instagram}\nTicket ${o.code}\n\nCheck: ${o.handle} tagged in the story and ${o.min}+ followers.`,
+    a_approve: '✅ Approve',
+    a_reject: '❌ Reject',
+    a_underpaid: 'amount is below the ticket price',
+    a_duplicate: 'ticket already paid (duplicate)',
+    a_no_code: 'ticket number not found',
+    a_payment: (o) => `⚠️ Payment needs manual review (${o.source}): ${o.amount}, “${o.reference}”, ${o.payer}\nReason: ${o.why}`,
+    a_report: (ev) => `Report: ${ev}`,
   },
 };
 // Russian is the default; a guest switches language in the app or with /lang.
 export const LANGS = ['ru', 'uk', 'en'];
 const LANG_NAMES = { ru: '🇷🇺 Русский', uk: '🇺🇦 Українська', en: '🇬🇧 English' };
 const tr = (user) => T[LANGS.includes(user?.ui_lang) ? user.ui_lang : 'ru'];
+// Admin messages follow the admin's own language; a group chat gets the default.
+const trChat = (chatId) => tr(get('SELECT ui_lang FROM users WHERE tg_id = ?', chatId));
 const langKeyboard = () => LANGS.reduce((kb, l) => kb.text(LANG_NAMES[l], `lang:${l}`), new InlineKeyboard());
 
 const eur = (c) => `${(c / 100).toFixed(c % 100 ? 2 : 0)} €`;
 const fmtTime = (ms) => new Date(ms).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: config.timezone });
-const fmtDate = (ms) => new Date(ms).toLocaleString('uk-UA', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: config.timezone });
+const LOCALES = { ru: 'ru-RU', uk: 'uk-UA', en: 'en-GB' };
+const fmtDate = (ms, lang = 'ru') => new Date(ms).toLocaleString(LOCALES[lang] || 'ru-RU', { weekday: 'short', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: config.timezone });
 const appUrl = (hash = '') => `${config.publicUrl}/${hash ? '#' + hash : ''}`;
 const isHttps = () => config.publicUrl.startsWith('https://');
 const appButton = (user, hash) =>
@@ -69,8 +108,8 @@ async function safeSend(chatId, fn) {
 if (bot) {
   bot.command('start', async (ctx) => {
     const user = upsertUser(ctx.from, { botStarted: true });
+    if (!user.ui_lang) return ctx.reply('🌐 Выбери язык · Обери мову · Choose language', { reply_markup: langKeyboard() });
     await ctx.reply(tr(user).welcome, { reply_markup: appButton(user) });
-    if (!user.ui_lang) await ctx.reply('🌐 Выбери язык · Обери мову · Choose language', { reply_markup: langKeyboard() });
   });
 
   bot.command('lang', (ctx) => ctx.reply('🌐 Выбери язык · Обери мову · Choose language', { reply_markup: langKeyboard() }));
@@ -89,10 +128,11 @@ if (bot) {
   // One-tap approval of repost screenshots in the admin chat.
   bot.callbackQuery(/^rp:(ok|no):(\d+)$/, async (ctx) => {
     const admin = get('SELECT * FROM users WHERE tg_id = ?', ctx.from.id);
-    if (admin?.role !== 'admin') return ctx.answerCallbackQuery({ text: 'Тільки для адмінів', show_alert: true });
+    const a = tr(admin);
+    if (admin?.role !== 'admin') return ctx.answerCallbackQuery({ text: a.a_only_admins, show_alert: true });
     const approve = ctx.match[1] === 'ok';
     const r = reviewProof(Number(ctx.match[2]), admin.tg_id, approve);
-    const verdict = r ? (approve ? '✅ Схвалено' : '❌ Відхилено') : 'Вже розглянуто';
+    const verdict = r ? (approve ? a.a_approved : a.a_rejected) : a.a_done;
     await ctx.answerCallbackQuery({ text: verdict });
     await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n${verdict} — ${displayName(admin)}`).catch(() => {});
   });
@@ -117,16 +157,16 @@ if (bot) {
     const user = get('SELECT * FROM users WHERE tg_id = ?', ticket.user_id);
     const ev = get('SELECT title FROM events WHERE id = ?', ticket.event_id);
     const file = (f) => new InputFile(path.join(config.dataDir, 'uploads', f));
-    const text =
-      `📸 Репост на знижку ${eur(ticket.price)}\n${ev.title}\n` +
-      `Гість: ${displayName(user)}${user.username ? ' @' + user.username : ''}\n` +
-      `Instagram: ${proof.instagram || '—'}\nКвиток ${ticket.code}\n\n` +
-      `Перевір: відмітка ${config.instagramHandle} у сторіс і ${config.minFollowers}+ підписників.`;
+    const info = {
+      price: eur(ticket.price), event: ev.title, code: ticket.code, handle: config.instagramHandle, min: config.minFollowers,
+      guest: displayName(user) + (user.username ? ' @' + user.username : ''), instagram: proof.instagram || '—',
+    };
     for (const chat of adminTargets()) {
+      const a = trChat(chat);
       await safeSend(chat, async (id) => {
         await bot.api.sendMediaGroup(id, [InputMediaBuilder.photo(file(proof.story_file)), InputMediaBuilder.photo(file(proof.profile_file))]);
-        await bot.api.sendMessage(id, text, {
-          reply_markup: new InlineKeyboard().text('✅ Схвалити', `rp:ok:${proof.id}`).text('❌ Відхилити', `rp:no:${proof.id}`),
+        await bot.api.sendMessage(id, a.a_proof(info), {
+          reply_markup: new InlineKeyboard().text(a.a_approve, `rp:ok:${proof.id}`).text(a.a_reject, `rp:no:${proof.id}`),
         });
       });
     }
@@ -134,9 +174,12 @@ if (bot) {
 
   bus.on('payment_review', (p) => {
     const amount = p.currency === 'UAH' ? `${(p.amount / 100).toFixed(2)} ₴` : eur(p.amount);
-    const why = p.status === 'underpaid' ? 'сума менша за ціну квитка' : p.ticket_id ? 'квиток уже оплачено (дубль)' : 'не знайдено номер квитка';
-    const text = `⚠️ Платіж на ручну перевірку (${p.source}): ${amount}, «${p.reference || '—'}», ${p.payer || ''}\nПричина: ${why}`;
-    for (const chat of adminTargets()) safeSend(chat, (id) => bot.api.sendMessage(id, text, { reply_markup: isHttps() ? new InlineKeyboard().webApp('Відкрити', appUrl('admin/payments')) : undefined }));
+    const why = p.status === 'underpaid' ? 'a_underpaid' : p.ticket_id ? 'a_duplicate' : 'a_no_code';
+    for (const chat of adminTargets()) {
+      const a = trChat(chat);
+      const text = a.a_payment({ source: p.source, amount, reference: p.reference || '—', payer: p.payer || '', why: a[why] });
+      safeSend(chat, (id) => bot.api.sendMessage(id, text, { reply_markup: isHttps() ? new InlineKeyboard().webApp(a.open, appUrl('admin/payments')) : undefined }));
+    }
   });
 }
 
@@ -149,7 +192,7 @@ export async function broadcastEvent(eventId, extraText = '') {
   for (const user of users) {
     const caption = [
       `🖤 ${ev.title}`,
-      `📅 ${fmtDate(ev.starts_at)}`,
+      `📅 ${fmtDate(ev.starts_at, user.ui_lang)}`,
       `📍 ${[ev.club, ev.city].filter(Boolean).join(', ')}`,
       ev.lineup && `🎧 ${ev.lineup}`,
       `🎟 ${eur(ev.price_online)} online · ${eur(ev.price_door)} door`,
@@ -172,7 +215,7 @@ export async function sendCsv(chatId, eventId) {
   if (!bot) throw new Error('bot not configured');
   const ev = get('SELECT * FROM events WHERE id = ?', eventId);
   const name = `filthy-${new Date(ev.starts_at).toISOString().slice(0, 10)}-${ev.id}.csv`;
-  await bot.api.sendDocument(chatId, new InputFile(Buffer.from(eventCsv(eventId)), name), { caption: `Звіт: ${ev.title}` });
+  await bot.api.sendDocument(chatId, new InputFile(Buffer.from(eventCsv(eventId)), name), { caption: trChat(chatId).a_report(ev.title) });
 }
 
 // Day-of reminder for paid tickets, once, after REMINDER_HOUR local time.
