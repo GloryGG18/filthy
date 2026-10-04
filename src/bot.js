@@ -100,7 +100,11 @@ const LANG_NAMES = { ru: '🇷🇺 Русский', uk: '🇺🇦 Українс
 const tr = (user) => T[LANGS.includes(user?.ui_lang) ? user.ui_lang : 'ru'];
 // Admin messages follow the admin's own language; a group chat gets the default.
 const trChat = (chatId) => tr(get('SELECT ui_lang FROM users WHERE tg_id = ?', chatId));
-const langKeyboard = () => LANGS.reduce((kb, l, i) => (i % 2 ? kb.text(LANG_NAMES[l], `lang:${l}`).row() : kb.text(LANG_NAMES[l], `lang:${l}`)), new InlineKeyboard());
+// Two per row; the current choice is ticked.
+const langKeyboard = (current) => LANGS.reduce((kb, l, i) => {
+  kb.text(`${l === current ? '✓ ' : ''}${LANG_NAMES[l]}`, `lang:${l}`);
+  return i % 2 ? kb.row() : kb;
+}, new InlineKeyboard());
 
 const eur = (c) => `${(c / 100).toFixed(c % 100 ? 2 : 0)} €`;
 const fmtTime = (ms) => new Date(ms).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', timeZone: config.timezone });
@@ -129,11 +133,11 @@ async function safeSend(chatId, fn) {
 if (bot) {
   bot.command('start', async (ctx) => {
     const user = upsertUser(ctx.from, { botStarted: true });
-    if (!user.ui_lang) return ctx.reply('🌐 Выбери язык · Обери мову · Vyber jazyk · Choose language', { reply_markup: langKeyboard() });
-    await ctx.reply(tr(user).welcome, { reply_markup: appButton(user) });
+    // Language first on every /start; the welcome follows in the chosen language.
+    await ctx.reply('🌐 Выбери язык · Обери мову · Vyber jazyk · Choose language', { reply_markup: langKeyboard(user.ui_lang) });
   });
 
-  bot.command('lang', (ctx) => ctx.reply('🌐 Выбери язык · Обери мову · Vyber jazyk · Choose language', { reply_markup: langKeyboard() }));
+  bot.command('lang', (ctx) => ctx.reply('🌐 Выбери язык · Обери мову · Vyber jazyk · Choose language', { reply_markup: langKeyboard(get('SELECT ui_lang FROM users WHERE tg_id = ?', ctx.from.id)?.ui_lang) }));
 
   bot.callbackQuery(/^lang:(ru|uk|sk|en)$/, async (ctx) => {
     upsertUser(ctx.from, { botStarted: true });
