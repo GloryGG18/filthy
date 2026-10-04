@@ -209,19 +209,25 @@ export function scan(controller, eventId, text) {
   };
 }
 
-export function doorSale(controller, eventId, { method, amount, name }) {
+// One sale can cover a group: `count` tickets at `amount` each, all marked as entered.
+export function doorSale(controller, eventId, { method, amount, name, count = 1 }) {
   if (!['cash', 'card'].includes(method)) throw new AppError('bad_method');
   const ev = get('SELECT * FROM events WHERE id = ?', eventId);
   if (!ev || ev.status === 'draft') throw new AppError('event_not_available', 404);
   const price = amount == null ? ev.price_door : Math.round(Number(amount) * 100);
   if (!Number.isFinite(price) || price < 0 || price > 100_000) throw new AppError('bad_amount');
+  const n = Number(count);
+  if (!Number.isInteger(n) || n < 1 || n > 50) throw new AppError('bad_count');
   const t = now();
-  const { lastInsertRowid } = run(
-    `INSERT INTO tickets (code, event_id, guest_name, tier, price, status, pay_method, paid_at, used_at, used_by, sold_by, created_at)
-     VALUES (?, ?, ?, 'door', ?, 'used', ?, ?, ?, ?, ?, ?)`,
-    newCode(), eventId, name || null, price, method, t, t, controller.tg_id, controller.tg_id, t,
-  );
-  return { ticket: get('SELECT * FROM tickets WHERE id = ?', lastInsertRowid), entered: enteredCount(eventId) };
+  const tickets = tx(() => Array.from({ length: n }, () => {
+    const { lastInsertRowid } = run(
+      `INSERT INTO tickets (code, event_id, guest_name, tier, price, status, pay_method, paid_at, used_at, used_by, sold_by, created_at)
+       VALUES (?, ?, ?, 'door', ?, 'used', ?, ?, ?, ?, ?, ?)`,
+      newCode(), eventId, name || null, price, method, t, t, controller.tg_id, controller.tg_id, t,
+    );
+    return get('SELECT * FROM tickets WHERE id = ?', lastInsertRowid);
+  }));
+  return { ticket: tickets[0], tickets, total: price * n, entered: enteredCount(eventId) };
 }
 
 export const enteredCount = (eventId) => get(`SELECT COUNT(*) n FROM tickets WHERE event_id = ? AND status = 'used'`, eventId).n;

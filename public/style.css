@@ -127,3 +127,7 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .badge.accent { box-shadow: var(--glow); }
 .qr { box-shadow: 0 0 0 3px var(--accent), var(--glow); }
 .toast { background: var(--accent2); color: #14051f; }
+.qty { display: grid; grid-template-columns: 64px 1fr 64px; gap: 10px; align-items: center; }
+.qty .btn { font-size: 24px; padding: 10px 0; }
+.qty-n { text-align: center; font-family: var(--display); font-size: 32px; color: #fff; text-shadow: 0 0 12px rgba(164,59,255,.7); }
+.qty-total { text-align: center; font-weight: 700; font-size: 17px; color: var(--accent2); }

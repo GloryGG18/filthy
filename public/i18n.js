@@ -49,7 +49,7 @@ export const dict = {
     // door
     choose_event: 'Обери вечірку', scan: 'Сканувати QR', manual_code: 'Номер квитка', check: 'Перевірити',
     entered: 'Увійшло', expected: 'Онлайн-квитків', sell: 'Продаж на вході', cash: 'Готівка', card: 'Картка',
-    guest_name: 'Імʼя (необовʼязково)', sold: 'Продано, впускай', my_sales: 'Мої продажі',
+    guest_name: 'Імʼя (необовʼязково)', people: 'Скільки людей', price_each: 'Ціна за одного, €', total: 'Разом', sold_n: (n) => `Продано ${n} квитків, впускай`, sold: 'Продано, впускай', my_sales: 'Мої продажі',
     r_ok: 'ОПЛАЧЕНО', r_used: 'ВЖЕ ВИКОРИСТАНО', r_unpaid: 'НЕ ОПЛАЧЕНО', r_invalid: 'НЕДІЙСНИЙ QR', r_wrong_event: 'ІНША ВЕЧІРКА',
     tap_next: 'Торкнись, щоб сканувати далі', confirm_sale: (a, m) => `Підтвердити продаж ${a} (${m})?`,
     scanner_unavailable: 'Сканер недоступний у цій версії Telegram. Введи номер квитка вручну.',
@@ -116,7 +116,7 @@ export const dict = {
     no_methods: 'Онлайн-оплата ещё не настроена',
     choose_event: 'Выбери вечеринку', scan: 'Сканировать QR', manual_code: 'Номер билета', check: 'Проверить',
     entered: 'Вошло', expected: 'Онлайн-билетов', sell: 'Продажа на входе', cash: 'Наличные', card: 'Карта',
-    guest_name: 'Имя (необязательно)', sold: 'Продано, впускай', my_sales: 'Мои продажи',
+    guest_name: 'Имя (необязательно)', people: 'Сколько человек', price_each: 'Цена за одного, €', total: 'Итого', sold_n: (n) => `Продано билетов: ${n}, впускай`, sold: 'Продано, впускай', my_sales: 'Мои продажи',
     r_ok: 'ОПЛАЧЕН', r_used: 'УЖЕ ИСПОЛЬЗОВАН', r_unpaid: 'НЕ ОПЛАЧЕН', r_invalid: 'НЕДЕЙСТВИТЕЛЬНЫЙ QR', r_wrong_event: 'ДРУГАЯ ВЕЧЕРИНКА',
     tap_next: 'Нажми, чтобы сканировать дальше', confirm_sale: (a, m) => `Подтвердить продажу ${a} (${m})?`,
     scanner_unavailable: 'Сканер недоступен в этой версии Telegram. Введи номер билета вручную.',
@@ -182,7 +182,7 @@ export const dict = {
     no_methods: 'Online payment isn’t set up yet',
     choose_event: 'Choose a party', scan: 'Scan QR', manual_code: 'Ticket number', check: 'Check',
     entered: 'Entered', expected: 'Online tickets', sell: 'Sell at the door', cash: 'Cash', card: 'Card',
-    guest_name: 'Name (optional)', sold: 'Sold, let them in', my_sales: 'My sales',
+    guest_name: 'Name (optional)', people: 'How many people', price_each: 'Price per person, €', total: 'Total', sold_n: (n) => `Sold ${n} tickets, let them in`, sold: 'Sold, let them in', my_sales: 'My sales',
     r_ok: 'PAID', r_used: 'ALREADY USED', r_unpaid: 'NOT PAID', r_invalid: 'INVALID QR', r_wrong_event: 'OTHER PARTY',
     tap_next: 'Tap to scan the next one', confirm_sale: (a, m) => `Confirm sale ${a} (${m})?`,
     scanner_unavailable: 'Scanner is not available in this Telegram version. Enter the ticket number manually.',
@@ -203,9 +203,9 @@ export const dict = {
 };
 
 export const errors = {
-  uk: { bad_card: 'Номер картки має містити 16 цифр', bad_choice: 'Невірне значення', sold_out: 'Квитки розпродано', sales_closed: 'Продаж закрито', not_payable: 'Цей квиток не можна оплатити', unauthorized: 'Відкрий застосунок через бота в Telegram', file_too_large: 'Файл завеликий (до 10 МБ)', bad_file_type: 'Потрібне зображення JPG або PNG', user_not_found: 'Користувача не знайдено. Він має спершу відкрити бота.', publish_first: 'Спершу опублікуй подію', bad_iban: 'Невірний IBAN', bad_url: 'Посилання має починатися з https://', bad_tolerance: 'Частка має бути від 0 до 1', monobank_unreachable: 'monobank не відповідає або токен невірний', event_has_sales: 'На подію вже є оплачені квитки, її не можна видалити. Постав статус «Закрито» або «Чернетка», щоб сховати.' },
-  ru: { bad_card: 'Номер карты должен содержать 16 цифр', bad_choice: 'Неверное значение', sold_out: 'Билеты распроданы', sales_closed: 'Продажа закрыта', not_payable: 'Этот билет нельзя оплатить', unauthorized: 'Открой приложение через бота в Telegram', file_too_large: 'Файл слишком большой (до 10 МБ)', bad_file_type: 'Нужно изображение JPG или PNG', user_not_found: 'Пользователь не найден. Он должен сначала открыть бота.', publish_first: 'Сначала опубликуй событие', bad_iban: 'Неверный IBAN', bad_url: 'Ссылка должна начинаться с https://', bad_tolerance: 'Доля должна быть от 0 до 1', monobank_unreachable: 'monobank не отвечает или токен неверный', event_has_sales: 'На событие уже есть оплаченные билеты, его нельзя удалить. Поставь статус «Закрыто» или «Черновик», чтобы скрыть.' },
-  en: { bad_card: 'Card number must have 16 digits', bad_choice: 'Invalid value', sold_out: 'Sold out', sales_closed: 'Sales are closed', not_payable: 'This ticket can’t be paid', unauthorized: 'Open the app via the Telegram bot', file_too_large: 'File too large (max 10 MB)', bad_file_type: 'Use a JPG or PNG image', user_not_found: 'User not found. They need to open the bot first.', publish_first: 'Publish the event first', bad_iban: 'Invalid IBAN', bad_url: 'Link must start with https://', bad_tolerance: 'Share must be between 0 and 1', monobank_unreachable: 'monobank is unreachable or the token is wrong', event_has_sales: 'This event already has paid tickets, so it can’t be deleted. Set it to Closed or Draft to hide it.' },
+  uk: { bad_count: 'Кількість від 1 до 50', bad_card: 'Номер картки має містити 16 цифр', bad_choice: 'Невірне значення', sold_out: 'Квитки розпродано', sales_closed: 'Продаж закрито', not_payable: 'Цей квиток не можна оплатити', unauthorized: 'Відкрий застосунок через бота в Telegram', file_too_large: 'Файл завеликий (до 10 МБ)', bad_file_type: 'Потрібне зображення JPG або PNG', user_not_found: 'Користувача не знайдено. Він має спершу відкрити бота.', publish_first: 'Спершу опублікуй подію', bad_iban: 'Невірний IBAN', bad_url: 'Посилання має починатися з https://', bad_tolerance: 'Частка має бути від 0 до 1', monobank_unreachable: 'monobank не відповідає або токен невірний', event_has_sales: 'На подію вже є оплачені квитки, її не можна видалити. Постав статус «Закрито» або «Чернетка», щоб сховати.' },
+  ru: { bad_count: 'Количество от 1 до 50', bad_card: 'Номер карты должен содержать 16 цифр', bad_choice: 'Неверное значение', sold_out: 'Билеты распроданы', sales_closed: 'Продажа закрыта', not_payable: 'Этот билет нельзя оплатить', unauthorized: 'Открой приложение через бота в Telegram', file_too_large: 'Файл слишком большой (до 10 МБ)', bad_file_type: 'Нужно изображение JPG или PNG', user_not_found: 'Пользователь не найден. Он должен сначала открыть бота.', publish_first: 'Сначала опубликуй событие', bad_iban: 'Неверный IBAN', bad_url: 'Ссылка должна начинаться с https://', bad_tolerance: 'Доля должна быть от 0 до 1', monobank_unreachable: 'monobank не отвечает или токен неверный', event_has_sales: 'На событие уже есть оплаченные билеты, его нельзя удалить. Поставь статус «Закрыто» или «Черновик», чтобы скрыть.' },
+  en: { bad_count: 'Count must be 1 to 50', bad_card: 'Card number must have 16 digits', bad_choice: 'Invalid value', sold_out: 'Sold out', sales_closed: 'Sales are closed', not_payable: 'This ticket can’t be paid', unauthorized: 'Open the app via the Telegram bot', file_too_large: 'File too large (max 10 MB)', bad_file_type: 'Use a JPG or PNG image', user_not_found: 'User not found. They need to open the bot first.', publish_first: 'Publish the event first', bad_iban: 'Invalid IBAN', bad_url: 'Link must start with https://', bad_tolerance: 'Share must be between 0 and 1', monobank_unreachable: 'monobank is unreachable or the token is wrong', event_has_sales: 'This event already has paid tickets, so it can’t be deleted. Set it to Closed or Draft to hide it.' },
 };
 
 export const LANG_NAMES = { ru: 'Русский', uk: 'Українська', en: 'English' };

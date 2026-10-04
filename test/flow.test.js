@@ -311,3 +311,16 @@ test('card mode: unique UAH amounts identify transfers without a comment; other 
 
   await set({ mono_mode: 'jar' });
 });
+
+test('one door sale can cover a group of guests', async () => {
+  const ev = (await call(ADMIN, 'POST', '/api/admin/events', { title: 'Group', starts_at: Date.now() + 86400_000, status: 'published' })).body;
+  await call(ADMIN, 'POST', '/api/admin/staff', { user: String(DOOR), role: 'controller' });
+  const r = await call(DOOR, 'POST', '/api/door/sale', { event_id: ev.id, method: 'cash', amount: 12, count: 4 });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.tickets.length, 4);
+  assert.equal(r.body.total, 4800);
+  assert.equal(r.body.entered, 4);
+  assert.equal((await call(DOOR, 'POST', '/api/door/sale', { event_id: ev.id, method: 'cash', amount: 12, count: 0 })).body.error, 'bad_count');
+  const report = (await call(ADMIN, 'GET', `/api/admin/events/${ev.id}/report`)).body;
+  assert.equal(JSON.stringify(report).includes('4800'), true, 'cash total counts every ticket in the group');
+});

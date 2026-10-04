@@ -390,12 +390,24 @@ async function pageDoor(eventId) {
   const code = h('input', { inputmode: 'numeric', placeholder: t.manual_code, maxlength: 8 });
   const amount = h('input', { inputmode: 'decimal', value: (ev.price_door / 100).toString() });
   const name = h('input', { placeholder: t.guest_name });
+  let count = 1;
+  const countEl = h('b', { class: 'qty-n' }, '1');
+  const total = h('div', { class: 'qty-total' });
+  const price = () => Math.round(Number(amount.value.replace(',', '.')) * 100);
+  const showTotal = () => {
+    countEl.textContent = count;
+    total.textContent = Number.isFinite(price()) ? `${t.total}: ${eur(price() * count)}` : '';
+  };
+  const step = (d) => { count = Math.min(50, Math.max(1, count + d)); if (inTg) tg.HapticFeedback?.selectionChanged?.(); showTotal(); };
+  amount.addEventListener('input', showTotal);
+  showTotal();
   const sell = async (method) => {
     const a = Number(amount.value.replace(',', '.'));
-    if (!(await confirmBox(t.confirm_sale(eur(Math.round(a * 100)), t[method])))) return;
+    const sum = count > 1 ? `${count} × ${eur(price())} = ${eur(price() * count)}` : eur(price());
+    if (!(await confirmBox(t.confirm_sale(sum, t[method])))) return;
     try {
-      await api('/api/door/sale', { body: { event_id: Number(eventId), method, amount: a, name: name.value } });
-      haptic('success'); toast(t.sold); name.value = ''; refresh();
+      await api('/api/door/sale', { body: { event_id: Number(eventId), method, amount: a, name: name.value, count } });
+      haptic('success'); toast(count > 1 ? t.sold_n(count) : t.sold); name.value = ''; count = 1; showTotal(); refresh();
     } catch (e) { toast(e.message); }
   };
 
@@ -406,7 +418,12 @@ async function pageDoor(eventId) {
     h('div', { class: 'row' }, h('div', { class: 'grow' }, code), h('button', { class: 'btn sm secondary', onclick: () => code.value && check(code.value) }, t.check)),
     h('div', { class: 'card stack' },
       h('h3', {}, t.sell),
-      h('div', { class: 'grid2' }, h('div', {}, h('label', {}, t.amount + ', €'), amount), h('div', {}, h('label', {}, t.guest_name), name)),
+      h('div', { class: 'grid2' }, h('div', {}, h('label', {}, t.price_each), amount), h('div', {}, h('label', {}, t.guest_name), name)),
+      h('div', {}, h('label', {}, t.people),
+        h('div', { class: 'qty' },
+          h('button', { class: 'btn secondary', onclick: () => step(-1) }, '−'), countEl,
+          h('button', { class: 'btn secondary', onclick: () => step(1) }, '+'))),
+      total,
       h('div', { class: 'grid2' },
         h('button', { class: 'btn ok', onclick: () => sell('cash') }, `💶 ${t.cash}`),
         h('button', { class: 'btn secondary', onclick: () => sell('card') }, `💳 ${t.card}`))),
