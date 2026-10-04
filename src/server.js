@@ -11,7 +11,7 @@ import { config } from './config.js';
 import { get, all, run, now, tx } from './db.js';
 import { authenticate, displayName } from './auth.js';
 import {
-  AppError, createTicket, startPayment, cancelTicket, markPaid, qrPayload, takenSeats, scan, doorSale,
+  AppError, createTicket, startPayment, cancelTicket, markPaid, qrPayload, takenSeats, scan, doorSale, cancelDoorSale, DOOR_UNDO_MINUTES,
   enteredCount, eventReport, eventCsv,
 } from './tickets.js';
 import { submitProof, reviewProof } from './repost.js';
@@ -199,17 +199,26 @@ export async function buildServer() {
   app.post('/api/door/scan', staff, async (req) => scan(req.user, Number(req.body?.event_id), req.body?.text));
 
   app.post('/api/door/sale', staff, async (req) => doorSale(req.user, Number(req.body?.event_id), req.body || {}));
+  app.post('/api/door/sale/cancel', staff, async (req) => cancelDoorSale(req.user, req.body?.codes));
 
   app.get('/api/door/stats', staff, async (req) => {
     const id = Number(req.query.event_id);
     const mine = all(
-      `SELECT pay_method, COUNT(*) n, SUM(price) total FROM tickets WHERE event_id = ? AND sold_by = ? GROUP BY pay_method`,
+      `SELECT pay_method, COUNT(*) n, SUM(price) total FROM tickets WHERE event_id = ? AND sold_by = ? AND tier = 'door' AND status = 'used' GROUP BY pay_method`,
       id, req.user.tg_id,
     );
+    // One row per sale (a group sale shares its timestamp), still within the undo window.
+    const recent = all(
+      `SELECT created_at, pay_method, COUNT(*) n, SUM(price) total, GROUP_CONCAT(code) codes, MAX(guest_name) guest_name
+       FROM tickets WHERE event_id = ? AND sold_by = ? AND tier = 'door' AND status = 'used' AND created_at > ?
+       GROUP BY created_at, pay_method ORDER BY created_at DESC LIMIT 5`,
+      id, req.user.tg_id, now() - DOOR_UNDO_MINUTES * 60_000,
+    ).map((r) => ({ ...r, codes: r.codes.split(',') }));
     return {
       entered: enteredCount(id),
       expected: get(`SELECT COUNT(*) n FROM tickets WHERE event_id = ? AND status IN ('paid','used') AND tier != 'door'`, id).n,
       my_sales: Object.fromEntries(mine.map((r) => [r.pay_method, { n: r.n, total: r.total }])),
+      recent_sales: recent,
       my_scans: get(`SELECT COUNT(*) n FROM scans WHERE event_id = ? AND controller_id = ? AND result = 'ok'`, id, req.user.tg_id).n,
     };
   });

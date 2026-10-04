@@ -230,6 +230,24 @@ export function doorSale(controller, eventId, { method, amount, name, count = 1 
   return { ticket: tickets[0], tickets, total: price * n, entered: enteredCount(eventId) };
 }
 
+// Undoes a mistaken door sale (a whole group at once). Controllers can undo their own sales for a short
+// while; admins can undo any. Cancelled sales drop out of the entry count and the cash report.
+export const DOOR_UNDO_MINUTES = 15;
+export function cancelDoorSale(user, codes) {
+  if (!Array.isArray(codes) || !codes.length || codes.length > 50) throw new AppError('bad_request');
+  return tx(() => {
+    const rows = codes.map((c) => get(`SELECT * FROM tickets WHERE code = ? AND tier = 'door'`, String(c)));
+    if (rows.some((r) => !r)) throw new AppError('not_found', 404);
+    if (rows.some((r) => r.status !== 'used')) throw new AppError('already_cancelled');
+    if (user.role !== 'admin') {
+      if (rows.some((r) => r.sold_by !== user.tg_id)) throw new AppError('forbidden', 403);
+      if (rows.some((r) => r.created_at < now() - DOOR_UNDO_MINUTES * 60_000)) throw new AppError('undo_too_late');
+    }
+    for (const r of rows) run(`UPDATE tickets SET status = 'cancelled' WHERE id = ?`, r.id);
+    return { cancelled: rows.length, entered: enteredCount(rows[0].event_id) };
+  });
+}
+
 export const enteredCount = (eventId) => get(`SELECT COUNT(*) n FROM tickets WHERE event_id = ? AND status = 'used'`, eventId).n;
 
 // ---------- report ----------
@@ -246,15 +264,15 @@ export function eventReport(eventId) {
     manual: sum(`tier != 'door' AND status IN ('paid','used') AND pay_method = 'manual'`),
     repost: sum(`tier = 'repost' AND status IN ('paid','used')`),
   };
-  const door = { cash: sum(`tier = 'door' AND pay_method = 'cash'`), card: sum(`tier = 'door' AND pay_method = 'card'`) };
+  const door = { cash: sum(`tier = 'door' AND status = 'used' AND pay_method = 'cash'`), card: sum(`tier = 'door' AND status = 'used' AND pay_method = 'card'`) };
 
   const controllers = all(
     `SELECT u.tg_id, u.username, u.first_name, u.last_name,
        (SELECT COUNT(*) FROM tickets t WHERE t.event_id = ? AND t.tier != 'door' AND t.used_by = u.tg_id) scanned_in,
-       (SELECT COUNT(*) FROM tickets t WHERE t.event_id = ? AND t.sold_by = u.tg_id AND t.pay_method = 'cash') cash_n,
-       (SELECT COALESCE(SUM(price),0) FROM tickets t WHERE t.event_id = ? AND t.sold_by = u.tg_id AND t.pay_method = 'cash') cash_total,
-       (SELECT COUNT(*) FROM tickets t WHERE t.event_id = ? AND t.sold_by = u.tg_id AND t.pay_method = 'card') card_n,
-       (SELECT COALESCE(SUM(price),0) FROM tickets t WHERE t.event_id = ? AND t.sold_by = u.tg_id AND t.pay_method = 'card') card_total,
+       (SELECT COUNT(*) FROM tickets t WHERE t.event_id = ? AND t.sold_by = u.tg_id AND t.status = 'used' AND t.pay_method = 'cash') cash_n,
+       (SELECT COALESCE(SUM(price),0) FROM tickets t WHERE t.event_id = ? AND t.sold_by = u.tg_id AND t.status = 'used' AND t.pay_method = 'cash') cash_total,
+       (SELECT COUNT(*) FROM tickets t WHERE t.event_id = ? AND t.sold_by = u.tg_id AND t.status = 'used' AND t.pay_method = 'card') card_n,
+       (SELECT COALESCE(SUM(price),0) FROM tickets t WHERE t.event_id = ? AND t.sold_by = u.tg_id AND t.status = 'used' AND t.pay_method = 'card') card_total,
        c.counted, c.note
      FROM users u LEFT JOIN cash_counts c ON c.event_id = ? AND c.controller_id = u.tg_id
      WHERE u.tg_id IN (SELECT used_by FROM tickets WHERE event_id = ? AND used_by IS NOT NULL
@@ -264,7 +282,7 @@ export function eventReport(eventId) {
 
   const doorSales = all(
     `SELECT t.code, t.price, t.pay_method, t.guest_name, t.created_at, t.sold_by
-     FROM tickets t WHERE t.event_id = ? AND t.tier = 'door' ORDER BY t.created_at`,
+     FROM tickets t WHERE t.event_id = ? AND t.tier = 'door' AND t.status = 'used' ORDER BY t.created_at`,
     eventId,
   );
 

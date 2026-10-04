@@ -343,6 +343,12 @@ async function pageDoor(eventId) {
   const ev = await api(`/api/events/${eventId}`);
   const stats = h('div', { class: 'grid3' });
   const sales = h('div', { class: 'muted small center' });
+  const recent = h('div', { class: 'stack' });
+  const undo = async (s) => {
+    const what = `${s.n > 1 ? `${s.n} × ${eur(s.total / s.n)} = ` : ''}${eur(s.total)} (${t[s.pay_method]}, ${fmtTime(s.created_at)})`;
+    if (!(await confirmBox(t.undo_sale_q(what)))) return;
+    try { await api('/api/door/sale/cancel', { body: { codes: s.codes } }); haptic('success'); toast(t.sale_cancelled); refresh(); } catch (e) { toast(e.message); }
+  };
   const refresh = async () => {
     const s = await api(`/api/door/stats?event_id=${eventId}`).catch(() => null);
     if (!s) return;
@@ -352,6 +358,11 @@ async function pageDoor(eventId) {
       h('div', { class: 'card stat' }, h('b', {}, s.my_scans), h('span', {}, t.scanned_in)));
     const c = s.my_sales.cash, k = s.my_sales.card;
     sales.textContent = `${t.my_sales}: ${t.cash} ${c?.n || 0} × = ${eur(c?.total || 0)} · ${t.card} ${k?.n || 0} × = ${eur(k?.total || 0)}`;
+    recent.replaceChildren(...(s.recent_sales.length ? [h('label', {}, t.recent_sales)] : []), ...s.recent_sales.map((x) => h('div', { class: 'card row' },
+      h('div', { class: 'grow' },
+        h('b', {}, `${x.n > 1 ? `${x.n} × ` : ''}${eur(x.total / x.n)} · ${t[x.pay_method]}`),
+        h('div', { class: 'muted small' }, `${fmtTime(x.created_at)}${x.guest_name ? ' · ' + x.guest_name : ''}${x.n > 1 ? ` · ${t.total} ${eur(x.total)}` : ''}`)),
+      h('button', { class: 'btn sm secondary', style: 'color:var(--bad)', onclick: () => undo(x) }, `✕ ${t.undo_sale}`))));
   };
   refresh();
   every(10000, refresh);
@@ -427,7 +438,8 @@ async function pageDoor(eventId) {
       h('div', { class: 'grid2' },
         h('button', { class: 'btn ok', onclick: () => sell('cash') }, `💶 ${t.cash}`),
         h('button', { class: 'btn secondary', onclick: () => sell('card') }, `💳 ${t.card}`))),
-    sales));
+    sales,
+    recent));
 }
 
 // ---------- admin ----------
@@ -725,7 +737,11 @@ async function adminReport(id) {
     h('button', { class: 'btn secondary', onclick: csv }, `⬇ ${t.csv}`),
     r.door_sales.length ? [h('h2', {}, t.door_sales), h('div', { class: 'card' }, h('table', {},
       r.door_sales.map((s) => h('tr', {}, h('td', {}, fmtTime(s.created_at)), h('td', {}, names.get(s.sold_by) || s.sold_by),
-        h('td', {}, t[s.pay_method]), h('td', { class: 'r' }, eur(s.price))))))] : null));
+        h('td', {}, t[s.pay_method]), h('td', { class: 'r' }, eur(s.price)),
+        h('td', { class: 'r' }, h('button', { class: 'btn sm ghost', style: 'color:var(--bad);padding:2px 6px', onclick: async () => {
+          if (!(await confirmBox(t.undo_sale_q(`${eur(s.price)} (${t[s.pay_method]}, ${fmtTime(s.created_at)})`)))) return;
+          try { await api('/api/door/sale/cancel', { body: { codes: [s.code] } }); toast(t.sale_cancelled); route(); } catch (e) { toast(e.message); }
+        } }, '✕'))))))] : null));
 }
 
 // ---------- shell ----------

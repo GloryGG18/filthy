@@ -324,3 +324,30 @@ test('one door sale can cover a group of guests', async () => {
   const report = (await call(ADMIN, 'GET', `/api/admin/events/${ev.id}/report`)).body;
   assert.equal(JSON.stringify(report).includes('4800'), true, 'cash total counts every ticket in the group');
 });
+
+test('a door sale can be undone by its seller; the cash report drops it', async () => {
+  const ev = (await call(ADMIN, 'POST', '/api/admin/events', { title: 'Undo', starts_at: Date.now() + 86400_000, status: 'published' })).body;
+  const sale = (await call(DOOR, 'POST', '/api/door/sale', { event_id: ev.id, method: 'cash', amount: 12, count: 3 })).body;
+  const keep = (await call(DOOR, 'POST', '/api/door/sale', { event_id: ev.id, method: 'cash', amount: 12 })).body;
+  const stats = (await call(DOOR, 'GET', `/api/door/stats?event_id=${ev.id}`)).body;
+  assert.equal(stats.recent_sales.length, 2);
+  const group = stats.recent_sales.find((s) => s.n === 3);
+  assert.equal(group.total, 3600);
+
+  assert.equal((await call(GUEST, 'POST', '/api/door/sale/cancel', { codes: group.codes })).status, 403);
+  const r = await call(DOOR, 'POST', '/api/door/sale/cancel', { codes: group.codes });
+  assert.equal(r.body.cancelled, 3);
+  assert.equal(r.body.entered, 1);
+  assert.equal((await call(DOOR, 'POST', '/api/door/sale/cancel', { codes: group.codes })).body.error, 'already_cancelled');
+
+  const report = (await call(ADMIN, 'GET', `/api/admin/events/${ev.id}/report`)).body;
+  assert.equal(report.door.cash.total, 1200);
+  assert.equal(report.door_sales.length, 1);
+  assert.equal(report.door_sales[0].code, keep.ticket.code);
+  assert.equal((await call(DOOR, 'GET', `/api/door/stats?event_id=${ev.id}`)).body.my_sales.cash.total, 1200);
+
+  // Too late for the controller, still fine for an admin.
+  run('UPDATE tickets SET created_at = created_at - 3600000 WHERE code = ?', keep.ticket.code);
+  assert.equal((await call(DOOR, 'POST', '/api/door/sale/cancel', { codes: [keep.ticket.code] })).body.error, 'undo_too_late');
+  assert.equal((await call(ADMIN, 'POST', '/api/door/sale/cancel', { codes: [keep.ticket.code] })).status, 200);
+});
