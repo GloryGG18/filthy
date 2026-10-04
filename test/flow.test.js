@@ -226,4 +226,7 @@ test('placeholders from .env.example are ignored and a QR secret is generated on
   assert.equal(data, dir2);
   assert.ok(secret.length >= 32);
   assert.equal(JSON.parse(read())[3], secret, 'generated secret is stable across restarts');
+  const bare = execFileSync(process.execPath, ['--no-warnings', '-e', "import('./src/config.js').then(({config:c})=>console.log(c.publicUrl))"],
+    { env: { PATH: process.env.PATH, PUBLIC_URL: 'filthy-production-c5e2.up.railway.app', DATA_DIR: dir2 } }).toString().trim();
+  assert.equal(bare, 'https://filthy-production-c5e2.up.railway.app');
 });

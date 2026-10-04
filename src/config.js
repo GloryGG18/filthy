@@ -7,6 +7,8 @@ if (fs.existsSync('.env')) process.loadEnvFile('.env');
 // Values copied verbatim from .env.example (Railway imports them as suggestions) count as unset.
 const PLACEHOLDER = /example\.sk|change-me|from-BotFather|^111111111$|XXXXXX|^SK00 0000/;
 const env = Object.fromEntries(Object.entries(process.env).filter(([, v]) => v !== '' && !PLACEHOLDER.test(v)));
+// A bare domain ("x.up.railway.app") means https.
+const withScheme = (u) => (/^https?:\/\//.test(u) ? u : `https://${u}`).replace(/\/$/, '');
 const list = (v) => (v || '').split(',').map((s) => s.trim()).filter(Boolean);
 const cents = (v, d) => Math.round(Number(v ?? d) * 100);
 
@@ -31,7 +33,7 @@ const qrSecret = loadQrSecret();
 export const config = {
   port: Number(env.PORT || 3000),
   // On Railway the generated domain arrives as RAILWAY_PUBLIC_DOMAIN, so PUBLIC_URL can be left out there.
-  publicUrl: (env.PUBLIC_URL || (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000')).replace(/\/$/, ''),
+  publicUrl: withScheme(env.PUBLIC_URL || env.RAILWAY_PUBLIC_DOMAIN || 'http://localhost:3000'),
   dataDir,
 
   botToken: env.BOT_TOKEN || '',
