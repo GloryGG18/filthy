@@ -52,6 +52,11 @@ export const config = {
     repost: cents(env.PRICE_REPOST, 8),
   },
   reservationMinutes: Number(env.RESERVATION_MINUTES || 30),
+  promoter: {
+    reward: cents(env.PROMOTER_REWARD, 1), // per new guest who buys a ticket through the link
+    minPayout: cents(env.PROMOTER_MIN_PAYOUT, 5),
+  },
+  botUsername: env.BOT_USERNAME || '', // only needed when the bot can't be reached to ask Telegram
   instagramHandle: env.INSTAGRAM_HANDLE || '@filthy.sk',
   minFollowers: Number(env.MIN_FOLLOWERS || 100),
 

@@ -130,7 +130,14 @@ export function markPaid(ticketId, method, paidAt = now()) {
 
 export function cancelTicket(ticket) {
   if (!['pending_approval', 'approved', 'awaiting_payment', 'expired'].includes(ticket.status)) throw new AppError('cannot_cancel');
-  run(`UPDATE tickets SET status = 'cancelled' WHERE id = ?`, ticket.id);
+  tx(() => {
+    run(`UPDATE tickets SET status = 'cancelled' WHERE id = ?`, ticket.id);
+    // Promoter balance spent on this ticket goes back to the balance.
+    if (ticket.discount > 0 && ticket.user_id) {
+      run(`INSERT INTO promoter_ledger (promoter_id, amount, kind, ticket_id, created_at) VALUES (?, ?, 'discount_refund', ?, ?)`,
+        ticket.user_id, ticket.discount, ticket.id, now());
+    }
+  });
 }
 
 // Unpaid online reservations lapse; approved repost tickets keep their approval and can pay again.

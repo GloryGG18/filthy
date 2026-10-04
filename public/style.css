@@ -131,3 +131,6 @@ input:focus, textarea:focus, select:focus { outline: none; border-color: var(--a
 .qty .btn { font-size: 24px; padding: 10px 0; }
 .qty-n { text-align: center; font-family: var(--display); font-size: 32px; color: #fff; text-shadow: 0 0 12px rgba(164,59,255,.7); }
 .qty-total { text-align: center; font-weight: 700; font-size: 17px; color: var(--accent2); }
+.steps { margin: 0; padding-left: 20px; line-height: 1.5; } .steps li + li { margin-top: 6px; }
+.promo-entry { border-color: rgba(164,59,255,.45); background: linear-gradient(135deg, rgba(164,59,255,.18), transparent 70%), var(--card); }
+.notice:not(.warn) { background: rgba(164,59,255,.14); border: 1px solid rgba(164,59,255,.45); }

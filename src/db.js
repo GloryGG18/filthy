@@ -114,6 +114,40 @@ CREATE TABLE IF NOT EXISTS cash_counts (
 // Migrations for databases created by earlier versions.
 const userCols = db.prepare('PRAGMA table_info(users)').all().map((c) => c.name);
 if (!userCols.includes('ui_lang')) db.exec('ALTER TABLE users ADD COLUMN ui_lang TEXT'); // language the user picked; NULL = default (ru)
+// Promoters: users apply, an admin approves, then they get a referral code and earn per new buyer.
+for (const [col, type] of [['promoter_status', 'TEXT'], ['promoter_note', 'TEXT'], ['ref_code', 'TEXT'], ['referred_by', 'INTEGER']]) {
+  if (!userCols.includes(col)) db.exec(`ALTER TABLE users ADD COLUMN ${col} ${type}`); // promoter_status: pending | approved | rejected
+}
+const ticketCols = db.prepare('PRAGMA table_info(tickets)').all().map((c) => c.name);
+if (!ticketCols.includes('discount')) db.exec('ALTER TABLE tickets ADD COLUMN discount INTEGER NOT NULL DEFAULT 0'); // promoter balance spent on it
+db.exec(`
+CREATE UNIQUE INDEX IF NOT EXISTS users_ref_code ON users(ref_code) WHERE ref_code IS NOT NULL;
+
+-- Every change to a promoter's balance; the balance is the sum. Payout requests are reserved here at once.
+CREATE TABLE IF NOT EXISTS promoter_ledger (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  promoter_id  INTEGER NOT NULL REFERENCES users(tg_id),
+  amount       INTEGER NOT NULL,                    -- cents, + earned / - spent
+  kind         TEXT NOT NULL,                       -- referral | discount | discount_refund | payout | payout_reverted
+  referred_id  INTEGER,                             -- the new guest, for referral rewards
+  ticket_id    INTEGER,
+  payout_id    INTEGER,
+  created_at   INTEGER NOT NULL
+);
+-- One reward per invited person, however many tickets they buy.
+CREATE UNIQUE INDEX IF NOT EXISTS ledger_one_reward ON promoter_ledger(referred_id) WHERE kind = 'referral';
+
+CREATE TABLE IF NOT EXISTS payouts (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  promoter_id  INTEGER NOT NULL REFERENCES users(tg_id),
+  amount       INTEGER NOT NULL,
+  details      TEXT NOT NULL,                       -- IBAN or card number, as the promoter typed it
+  status       TEXT NOT NULL DEFAULT 'pending',     -- pending | paid | rejected
+  handled_by   INTEGER,
+  handled_at   INTEGER,
+  created_at   INTEGER NOT NULL
+);
+`);
 
 export const now = () => Date.now();
 

@@ -353,3 +353,75 @@ test('a door sale can be undone by its seller; the cash report drops it', async 
   assert.equal((await call(DOOR, 'POST', '/api/door/sale/cancel', { codes: [keep.ticket.code] })).body.error, 'undo_too_late');
   assert.equal((await call(ADMIN, 'POST', '/api/door/sale/cancel', { codes: [keep.ticket.code] })).status, 200);
 });
+
+test('promoters: approval, referral link, 1 € per new buyer, balance as discount, payouts', async () => {
+  const PROMO = 30, FRIEND = 31, FRIEND2 = 32, OLD = 2;
+  await call(PROMO, 'GET', '/api/me');
+  assert.equal((await call(PROMO, 'GET', '/api/promoter')).body.status, null);
+  assert.equal((await call(PROMO, 'POST', '/api/promoter/apply', { instagram: '@promo', note: 'I know everyone' })).body.status, 'pending');
+  assert.equal((await call(PROMO, 'POST', '/api/promoter/apply', {})).body.error, 'already_applied');
+  assert.equal((await call(PROMO, 'GET', '/api/promoter')).body.link, undefined, 'no link before approval');
+
+  const apps = (await call(ADMIN, 'GET', '/api/admin/promoters')).body.applications;
+  assert.equal(apps.length, 1);
+  assert.equal((await call(GUEST, 'POST', `/api/admin/promoters/${PROMO}`, { approve: true })).status, 403);
+  await call(ADMIN, 'POST', `/api/admin/promoters/${PROMO}`, { approve: true });
+  const view = (await call(PROMO, 'GET', '/api/promoter')).body;
+  assert.equal(view.status, 'approved');
+  const code = view.code;
+
+  // A Mini App opened with start_param=ref_<code> links the new guest (dev auth path: attach directly).
+  const { attachReferral } = await import('../src/promoters.js');
+  const { get } = await import('../src/db.js');
+  const user = (id) => get('SELECT * FROM users WHERE tg_id = ?', id);
+  await call(FRIEND, 'GET', '/api/me'); await call(FRIEND2, 'GET', '/api/me');
+  assert.equal(attachReferral(user(FRIEND), code), true);
+  assert.equal(attachReferral(user(FRIEND2), code), true);
+  assert.equal(attachReferral(user(OLD), code), false, 'someone who already bought a ticket is not new');
+  assert.equal(attachReferral(user(PROMO), code), false, 'no self-referral');
+
+  const ev = (await call(ADMIN, 'POST', '/api/admin/events', { title: 'Promo night', starts_at: Date.now() + 86400_000, status: 'published' })).body;
+  const buyAndPay = async (u) => {
+    const tk = (await call(u, 'POST', '/api/tickets', { event_id: ev.id, tier: 'online' })).body;
+    await call(u, 'POST', `/api/tickets/${tk.id}/pay`, { method: 'paybysquare' });
+    await call(null, 'POST', '/api/dev/payment', { source: 'fio', amount: 1000, currency: 'EUR', reference: tk.code });
+    return tk;
+  };
+  await buyAndPay(FRIEND); await buyAndPay(FRIEND); await buyAndPay(FRIEND2);
+  let pv = (await call(PROMO, 'GET', '/api/promoter')).body;
+  assert.equal(pv.invited, 2);
+  assert.equal(pv.buyers, 2, 'one reward per person, not per ticket');
+  assert.equal(pv.balance, 200);
+
+  // Balance as a discount on the promoter's own ticket, refunded if the ticket is cancelled.
+  const own = (await call(PROMO, 'POST', '/api/tickets', { event_id: ev.id, tier: 'online' })).body;
+  await call(PROMO, 'POST', `/api/tickets/${own.id}/pay`, { method: 'paybysquare' });
+  const used = (await call(PROMO, 'POST', `/api/tickets/${own.id}/use-balance`)).body;
+  assert.equal(used.used, 200);
+  assert.equal(used.ticket.price, 800);
+  assert.equal(used.ticket.discount, 200);
+  assert.equal((await call(PROMO, 'POST', `/api/tickets/${own.id}/use-balance`)).body.error, 'balance_used');
+  await call(PROMO, 'POST', `/api/tickets/${own.id}/cancel`);
+  assert.equal((await call(PROMO, 'GET', '/api/promoter')).body.balance, 200, 'cancelled ticket returns the balance');
+
+  // Payouts: reserved at request, returned on rejection.
+  assert.equal((await call(PROMO, 'POST', '/api/promoter/payouts', { amount: 1, details: 'SK00' })).body.error, 'payout_min');
+  run('INSERT INTO promoter_ledger (promoter_id, amount, kind, created_at) VALUES (?, 500, ?, ?)', PROMO, 'referral_test', Date.now());
+  const p = (await call(PROMO, 'POST', '/api/promoter/payouts', { amount: 6, details: 'SK31 1200 0000 1987 4263 7541' })).body;
+  assert.equal(p.status, 'pending');
+  assert.equal((await call(PROMO, 'GET', '/api/promoter')).body.balance, 100);
+  assert.equal((await call(ADMIN, 'GET', '/api/admin/promoters')).body.payouts.length, 1);
+  await call(ADMIN, 'POST', `/api/admin/payouts/${p.id}`, { paid: false });
+  assert.equal((await call(PROMO, 'GET', '/api/promoter')).body.balance, 700);
+  const p2 = (await call(PROMO, 'POST', '/api/promoter/payouts', { amount: 7, details: 'card 5375' })).body;
+  await call(ADMIN, 'POST', `/api/admin/payouts/${p2.id}`, { paid: true });
+  assert.equal((await call(ADMIN, 'POST', `/api/admin/payouts/${p2.id}`, { paid: false })).body.error, 'already_handled');
+  assert.equal((await call(PROMO, 'GET', '/api/promoter')).body.balance, 0);
+
+  // A fully covered ticket is paid straight from the balance.
+  run('INSERT INTO promoter_ledger (promoter_id, amount, kind, created_at) VALUES (?, 1500, ?, ?)', PROMO, 'referral_test', Date.now());
+  const free = (await call(PROMO, 'POST', '/api/tickets', { event_id: ev.id, tier: 'online' })).body;
+  const r = (await call(PROMO, 'POST', `/api/tickets/${free.id}/use-balance`)).body;
+  assert.equal(r.ticket.status, 'paid');
+  assert.equal(r.balance, 500);
+});

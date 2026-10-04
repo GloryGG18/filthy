@@ -7,6 +7,7 @@ import { get, all, run, now } from './db.js';
 import { upsertUser, displayName } from './auth.js';
 import { bus, eventCsv } from './tickets.js';
 import { reviewProof } from './repost.js';
+import { attachReferral, reviewPromoter } from './promoters.js';
 
 const T = {
   uk: {
@@ -17,6 +18,14 @@ const T = {
     rejected: (ev) => `❌ Репост для «${ev}» не підтверджено. Можна надіслати інші скріншоти або купити звичайний онлайн-квиток.`,
     reminder: (ev, time) => `🔥 Сьогодні «${ev}», початок о ${time}. Твій QR у «Моїх квитках».`,
     buy: 'Купити квиток',
+    p_approved: '🎉 Тебе схвалено як промоутера! Твоє посилання і баланс у застосунку: «Мої квитки» → «Промоутер».',
+    p_rejected: 'На жаль, заявку в промоутери не схвалено.',
+    p_credited: (b) => `💸 +1 €: новий гість купив квиток за твоїм посиланням. Баланс: ${b}`,
+    p_paid: (a) => `✅ Виплату ${a} відправлено.`,
+    p_payout_rejected: (a) => `❌ Виплату ${a} відхилено, гроші повернулися на баланс.`,
+    p_open: 'Кабінет промоутера',
+    a_promoter_app: (o) => `🤝 Заявка в промоутери\n${o.name}\n${o.note || ''}`,
+    a_payout: (o) => `💸 Запит на виплату ${o.amount}\n${o.name}\nРеквізити: ${o.details}`,
     a_only_admins: 'Тільки для адмінів',
     a_approved: '✅ Схвалено',
     a_rejected: '❌ Відхилено',
@@ -38,6 +47,14 @@ const T = {
     rejected: (ev) => `❌ Репост для «${ev}» не подтверждён. Можно отправить другие скриншоты или купить обычный онлайн-билет.`,
     reminder: (ev, time) => `🔥 Сегодня «${ev}», начало в ${time}. Твой QR в «Моих билетах».`,
     buy: 'Купить билет',
+    p_approved: '🎉 Тебя одобрили как промоутера! Твоя ссылка и баланс в приложении: «Мои билеты» → «Промоутер».',
+    p_rejected: 'К сожалению, заявку в промоутеры не одобрили.',
+    p_credited: (b) => `💸 +1 €: новый гость купил билет по твоей ссылке. Баланс: ${b}`,
+    p_paid: (a) => `✅ Выплата ${a} отправлена.`,
+    p_payout_rejected: (a) => `❌ Выплату ${a} отклонили, деньги вернулись на баланс.`,
+    p_open: 'Кабинет промоутера',
+    a_promoter_app: (o) => `🤝 Заявка в промоутеры\n${o.name}\n${o.note || ''}`,
+    a_payout: (o) => `💸 Запрос на выплату ${o.amount}\n${o.name}\nРеквизиты: ${o.details}`,
     a_only_admins: 'Только для админов',
     a_approved: '✅ Одобрено',
     a_rejected: '❌ Отклонено',
@@ -59,6 +76,14 @@ const T = {
     rejected: (ev) => `❌ Your repost for “${ev}” wasn't approved. Send other screenshots or buy a regular online ticket.`,
     reminder: (ev, time) => `🔥 “${ev}” is tonight, starting at ${time}. Your QR is in “My tickets”.`,
     buy: 'Buy a ticket',
+    p_approved: '🎉 You’re approved as a promoter! Your link and balance are in the app: “My tickets” → “Promoter”.',
+    p_rejected: 'Sorry, your promoter application wasn’t approved.',
+    p_credited: (b) => `💸 +1 €: a new guest bought a ticket through your link. Balance: ${b}`,
+    p_paid: (a) => `✅ Your payout of ${a} has been sent.`,
+    p_payout_rejected: (a) => `❌ Your payout of ${a} was rejected; the money is back on your balance.`,
+    p_open: 'Promoter dashboard',
+    a_promoter_app: (o) => `🤝 Promoter application\n${o.name}\n${o.note || ''}`,
+    a_payout: (o) => `💸 Payout request ${o.amount}\n${o.name}\nDetails: ${o.details}`,
     a_only_admins: 'Admins only',
     a_approved: '✅ Approved',
     a_rejected: '❌ Rejected',
@@ -80,6 +105,14 @@ const T = {
     rejected: (ev) => `❌ Repost pre „${ev}“ nebol schválený. Pošli iné screenshoty alebo kúp bežný online lístok.`,
     reminder: (ev, time) => `🔥 Dnes je „${ev}“, začiatok o ${time}. Tvoj QR je v „Moje lístky“.`,
     buy: 'Kúpiť lístok',
+    p_approved: '🎉 Si schválený ako promotér! Tvoj odkaz a zostatok nájdeš v aplikácii: „Moje lístky“ → „Promotér“.',
+    p_rejected: 'Žiaľ, tvoja žiadosť o promotéra nebola schválená.',
+    p_credited: (b) => `💸 +1 €: nový hosť si kúpil lístok cez tvoj odkaz. Zostatok: ${b}`,
+    p_paid: (a) => `✅ Výplata ${a} bola odoslaná.`,
+    p_payout_rejected: (a) => `❌ Výplata ${a} bola zamietnutá, peniaze sa vrátili na zostatok.`,
+    p_open: 'Panel promotéra',
+    a_promoter_app: (o) => `🤝 Žiadosť o promotéra\n${o.name}\n${o.note || ''}`,
+    a_payout: (o) => `💸 Žiadosť o výplatu ${o.amount}\n${o.name}\nÚdaje: ${o.details}`,
     a_only_admins: 'Len pre adminov',
     a_approved: '✅ Schválené',
     a_rejected: '❌ Zamietnuté',
@@ -117,6 +150,10 @@ const appButton = (user, hash) =>
 
 export const tgWebhookSecret = crypto.createHash('sha256').update(config.qrSecret + ':tg').digest('hex').slice(0, 32);
 export const bot = config.botToken ? new Bot(config.botToken) : null;
+// grammY throws when botInfo is read before init (no network yet), so fall back to BOT_USERNAME.
+export const botUsername = () => {
+  try { return bot?.botInfo?.username || config.botUsername; } catch { return config.botUsername; }
+};
 
 const adminTargets = () =>
   config.adminChatId ? [config.adminChatId] : all(`SELECT tg_id FROM users WHERE role = 'admin' AND bot_started = 1`).map((u) => u.tg_id);
@@ -133,6 +170,8 @@ async function safeSend(chatId, fn) {
 if (bot) {
   bot.command('start', async (ctx) => {
     const user = upsertUser(ctx.from, { botStarted: true });
+    const ref = String(ctx.match || '').match(/^ref_(\w+)$/)?.[1];
+    if (ref) attachReferral(user, ref);
     // Language first on every /start; the welcome follows in the chosen language.
     await ctx.reply('🌐 Выбери язык · Обери мову · Vyber jazyk · Choose language', { reply_markup: langKeyboard(user.ui_lang) });
   });
@@ -160,6 +199,52 @@ if (bot) {
     const verdict = r ? (approve ? a.a_approved : a.a_rejected) : a.a_done;
     await ctx.answerCallbackQuery({ text: verdict });
     await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n${verdict} — ${displayName(admin)}`).catch(() => {});
+  });
+
+  // One-tap approval of promoter applications.
+  bot.callbackQuery(/^pr:(ok|no):(\d+)$/, async (ctx) => {
+    const admin = get('SELECT * FROM users WHERE tg_id = ?', ctx.from.id);
+    const a = tr(admin);
+    if (admin?.role !== 'admin') return ctx.answerCallbackQuery({ text: a.a_only_admins, show_alert: true });
+    const approve = ctx.match[1] === 'ok';
+    let verdict;
+    try {
+      const before = get('SELECT promoter_status FROM users WHERE tg_id = ?', Number(ctx.match[2]))?.promoter_status;
+      reviewPromoter(Number(ctx.match[2]), approve);
+      verdict = before === 'pending' ? (approve ? a.a_approved : a.a_rejected) : a.a_done;
+    } catch { verdict = a.a_done; }
+    await ctx.answerCallbackQuery({ text: verdict });
+    await ctx.editMessageText(`${ctx.callbackQuery.message.text}\n\n${verdict} — ${displayName(admin)}`).catch(() => {});
+  });
+
+  bus.on('promoter_applied', (u) => {
+    for (const chat of adminTargets()) {
+      const a = trChat(chat);
+      const text = a.a_promoter_app({ name: displayName(u) + (u.username ? ' @' + u.username : ''), note: u.promoter_note });
+      safeSend(chat, (id) => bot.api.sendMessage(id, text, { reply_markup: new InlineKeyboard().text(a.a_approve, `pr:ok:${u.tg_id}`).text(a.a_reject, `pr:no:${u.tg_id}`) }));
+    }
+  });
+
+  bus.on('promoter_reviewed', (u, approved) => {
+    const text = approved ? tr(u).p_approved : tr(u).p_rejected;
+    safeSend(u.tg_id, (id) => bot.api.sendMessage(id, text, { reply_markup: approved && isHttps() ? new InlineKeyboard().webApp(tr(u).p_open, appUrl('promoter')) : undefined }));
+  });
+
+  bus.on('promoter_credited', (promoter, _guest, balance) => {
+    safeSend(promoter.tg_id, (id) => bot.api.sendMessage(id, tr(promoter).p_credited(eur(balance))));
+  });
+
+  bus.on('payout_requested', (p, u) => {
+    for (const chat of adminTargets()) {
+      const a = trChat(chat);
+      const text = a.a_payout({ amount: eur(p.amount), name: displayName(u) + (u.username ? ' @' + u.username : ''), details: p.details });
+      safeSend(chat, (id) => bot.api.sendMessage(id, text, { reply_markup: isHttps() ? new InlineKeyboard().webApp(a.open, appUrl('admin/promoters')) : undefined }));
+    }
+  });
+
+  bus.on('payout_handled', (p, u) => {
+    const text = p.status === 'paid' ? tr(u).p_paid(eur(p.amount)) : tr(u).p_payout_rejected(eur(p.amount));
+    safeSend(u.tg_id, (id) => bot.api.sendMessage(id, text));
   });
 
   bot.catch((err) => console.error('bot error:', err.error?.message || err));

@@ -179,7 +179,70 @@ async function pageTickets() {
         h('div', { class: 'date' }, fmtDate(x.event.starts_at)),
         h('h3', {}, x.event.title),
         h('div', { class: 'row small' }, statusBadge(x.status), h('span', { class: 'muted' }, `${t.tier[x.tier]} · ${eur(x.price)}`)))))
-      : h('p', { class: 'muted center' }, t.no_tickets)));
+      : h('p', { class: 'muted center' }, t.no_tickets),
+    h('a', { class: 'card link row promo-entry', href: '#promoter' },
+      h('div', { style: 'font-size:28px' }, '🤝'),
+      h('div', { class: 'grow' }, h('h3', {}, t.p_title),
+        h('div', { class: 'muted small' }, me.user.promoter === 'approved' ? `${t.p_balance}: ${eur(me.user.balance)}` : t.p_teaser)),
+      h('div', { class: 'price' }, '›'))));
+}
+
+// ---------- promoter ----------
+
+async function pagePromoter() {
+  const p = await api('/api/promoter');
+  const head = [h('h1', {}, t.p_title)];
+
+  if (p.status === 'pending') {
+    return render(h('div', { class: 'stack' }, ...head,
+      h('div', { class: 'card center' }, h('div', { style: 'font-size:40px' }, '⏳'), h('p', {}, t.p_pending))));
+  }
+
+  if (p.status !== 'approved') {
+    const ig = h('input', { placeholder: '@instagram' });
+    const note = h('textarea', { placeholder: t.p_note_hint });
+    const apply = async () => {
+      try { await api('/api/promoter/apply', { body: { instagram: ig.value, note: note.value } }); haptic('success'); route(); } catch (e) { toast(e.message); }
+    };
+    return render(h('div', { class: 'stack' }, ...head,
+      p.status === 'rejected' ? h('div', { class: 'notice warn' }, t.p_rejected) : null,
+      h('div', { class: 'card' }, h('ol', { class: 'steps' }, t.p_how(eur(p.reward), eur(p.min_payout)).map((s) => h('li', {}, s)))),
+      h('div', { class: 'card stack' },
+        h('div', { class: 'field' }, h('label', {}, t.instagram), ig),
+        h('div', { class: 'field' }, h('label', {}, t.p_note), note)),
+      h('button', { class: 'btn', onclick: apply }, t.p_apply)));
+  }
+
+  const amount = h('input', { inputmode: 'decimal', value: p.balance >= p.min_payout ? (p.balance / 100).toFixed(2) : '' });
+  const details = h('input', { placeholder: t.p_details_hint });
+  const payout = async () => {
+    if (!(await confirmBox(t.p_payout_q(`${amount.value} €`)))) return;
+    try { await api('/api/promoter/payouts', { body: { amount: amount.value, details: details.value } }); haptic('success'); toast(t.p_payout_sent); route(); } catch (e) { toast(e.message); }
+  };
+  const share = () => {
+    const url = `https://t.me/share/url?url=${encodeURIComponent(p.link)}&text=${encodeURIComponent(t.p_share_text)}`;
+    if (inTg && tg.openTelegramLink) tg.openTelegramLink(url); else window.open(url);
+  };
+  const pst = { pending: ['warn', t.p_st_pending], paid: ['ok', t.p_st_paid], rejected: ['bad', t.p_st_rejected] };
+  render(h('div', { class: 'stack' }, ...head,
+    h('div', { class: 'card stack' },
+      h('label', {}, t.p_your_link),
+      h('div', { class: 'row' }, h('div', { class: 'grow val', style: 'overflow-wrap:anywhere;font-weight:600' }, p.link), copyBtn(p.link)),
+      h('button', { class: 'btn', onclick: share }, `📤 ${t.p_share}`),
+      h('p', { class: 'muted small' }, t.p_link_hint(eur(p.reward)))),
+    h('div', { class: 'grid3' },
+      h('div', { class: 'card stat' }, h('b', {}, p.invited), h('span', {}, t.p_invited)),
+      h('div', { class: 'card stat' }, h('b', {}, p.buyers), h('span', {}, t.p_buyers)),
+      h('div', { class: 'card stat' }, h('b', {}, eur(p.balance)), h('span', {}, t.p_balance))),
+    h('p', { class: 'muted small center' }, t.p_discount_hint),
+    h('div', { class: 'card stack' },
+      h('h3', {}, t.p_withdraw),
+      h('div', { class: 'grid2' }, h('div', {}, h('label', {}, t.amount + ', €'), amount), h('div', {}, h('label', {}, t.p_details), details)),
+      h('p', { class: 'muted small' }, t.p_min(eur(p.min_payout))),
+      h('button', { class: 'btn secondary', onclick: payout, disabled: p.balance < p.min_payout }, t.p_request)),
+    p.payouts.length ? h('div', { class: 'card' }, p.payouts.map((x) => h('div', { class: 'list-item' },
+      h('div', { class: 'grow' }, h('b', {}, eur(x.amount)), h('div', { class: 'muted small' }, `${fmtDate(x.created_at)} · ${x.details}`)),
+      h('span', { class: `badge ${pst[x.status][0]}` }, pst[x.status][1])))) : null));
 }
 
 async function pageTicket(id, method) {
@@ -226,7 +289,17 @@ async function pageTicket(id, method) {
   if (!method) {
     const opt = (key, title, desc) => h('div', { class: 'card tier', onclick: () => pageTicket(id, key) },
       h('div', { class: 'grow' }, h('h3', {}, title), h('div', { class: 'muted small' }, desc)), h('div', { class: 'price' }, '›'));
+    const useBalance = async () => {
+      const amt = Math.min(x.balance, x.price);
+      if (!(await confirmBox(t.p_use_balance_q(eur(amt))))) return;
+      try {
+        await api(`/api/tickets/${id}/use-balance`, { method: 'POST' });
+        me = await api('/api/me'); haptic('success'); pageTicket(id);
+      } catch (e) { toast(e.message); }
+    };
     return render(h('div', { class: 'stack' }, header,
+      x.balance > 0 && !x.discount ? h('button', { class: 'btn secondary', onclick: useBalance }, `🤝 ${t.p_use_balance(eur(Math.min(x.balance, x.price)))}`) : null,
+      x.discount ? h('div', { class: 'notice' }, t.p_discount_applied(eur(x.discount))) : null,
       h('h2', {}, t.pay_how),
       methods.paybysquare ? opt('paybysquare', t.pbs, t.pbs_desc) : null,
       methods.monobank ? opt('monobank', me.settings.mono_mode === 'card' ? t.mono_card_label : t.mono, t.mono_desc) : null,
@@ -446,7 +519,7 @@ async function pageDoor(eventId) {
 // ---------- admin ----------
 
 function adminNav(active) {
-  const items = [['events', t.a_events], ['approvals', t.a_approvals], ['payments', t.a_payments], ['search', t.a_search], ['staff', t.a_staff], ['settings', t.a_settings]];
+  const items = [['events', t.a_events], ['approvals', t.a_approvals], ['payments', t.a_payments], ['search', t.a_search], ['promoters', t.a_promoters], ['staff', t.a_staff], ['settings', t.a_settings]];
   return h('div', { class: 'seg scroll', style: 'overflow-x:auto' },
     items.map(([k, label]) => h('button', { class: active === k ? 'on' : '', onclick: () => go(`admin/${k}`) }, label)));
 }
@@ -533,6 +606,34 @@ async function pageAdmin(section = 'events', id, sub) {
   }
 
   if (section === 'settings') return adminSettings(fill);
+
+  if (section === 'promoters') {
+    const { applications, promoters, payouts } = await api('/api/admin/promoters');
+    const review = async (u, approve) => {
+      try { await api(`/api/admin/promoters/${u.id}`, { body: { approve } }); haptic('success'); route(); } catch (e) { toast(e.message); }
+    };
+    const payout = async (p, paid) => {
+      if (!(await confirmBox(paid ? t.p_mark_paid_q(eur(p.amount), p.name) : t.p_reject_payout_q(eur(p.amount))))) return;
+      try { await api(`/api/admin/payouts/${p.id}`, { body: { paid } }); haptic('success'); route(); } catch (e) { toast(e.message); }
+    };
+    const who = (u) => `${u.name}${u.username ? ' @' + u.username : ''}`;
+    fill(
+      h('h2', {}, t.p_payouts), payouts.length ? payouts.map((p) => h('div', { class: 'card stack' },
+        h('div', { class: 'row' }, h('b', { class: 'grow' }, `${eur(p.amount)} · ${who(p)}`), h('span', { class: 'muted small' }, fmtDate(p.created_at))),
+        h('div', { class: 'row' }, h('div', { class: 'grow val', style: 'overflow-wrap:anywhere' }, p.details), copyBtn(p.details)),
+        h('div', { class: 'grid2' },
+          h('button', { class: 'btn ok', onclick: () => payout(p, true) }, t.p_paid_btn),
+          h('button', { class: 'btn secondary', onclick: () => payout(p, false) }, t.reject)))) : h('p', { class: 'muted small' }, t.p_no_payouts),
+      h('h2', {}, t.p_applications), applications.length ? applications.map((u) => h('div', { class: 'card stack' },
+        h('b', {}, who(u)), u.note ? h('div', { class: 'small', style: 'white-space:pre-wrap' }, u.note) : null,
+        h('div', { class: 'grid2' },
+          h('button', { class: 'btn ok', onclick: () => review(u, true) }, t.approve),
+          h('button', { class: 'btn bad', onclick: () => review(u, false) }, t.reject)))) : h('p', { class: 'muted small' }, t.p_no_applications),
+      h('h2', {}, t.p_list), promoters.length ? h('div', { class: 'card' }, promoters.map((u) => h('div', { class: 'list-item' },
+        h('div', { class: 'grow' }, h('b', {}, who(u)),
+          h('div', { class: 'muted small' }, `${t.p_invited}: ${u.invited} · ${t.p_buyers}: ${u.buyers} · ${t.p_earned}: ${eur(u.earned)} · ${t.p_balance}: ${eur(u.balance)}`)),
+        h('button', { class: 'btn sm secondary', onclick: async () => { if (await confirmBox(t.p_revoke_q(who(u)))) review(u, false); } }, '✕')))) : h('p', { class: 'muted small' }, t.p_none));
+  }
 
   if (section === 'staff') {
     const list = await api('/api/admin/staff');
@@ -759,10 +860,10 @@ async function route() {
   cleanup.forEach((f) => f());
   cleanup = [];
   const [page, ...args] = location.hash.replace(/^#\/?/, '').split('/');
-  const tab = { '': '', event: '', tickets: 'tickets', ticket: 'tickets', door: 'door', admin: 'admin' }[page] ?? '';
+  const tab = { '': '', event: '', tickets: 'tickets', ticket: 'tickets', promoter: 'tickets', door: 'door', admin: 'admin' }[page] ?? '';
   renderTabs(tab);
   if (tg?.BackButton) {
-    if (['event', 'ticket'].includes(page) || (page === 'admin' && args.length > 1) || (page === 'door' && args[0])) tg.BackButton.show();
+    if (['event', 'ticket', 'promoter'].includes(page) || (page === 'admin' && args.length > 1) || (page === 'door' && args[0])) tg.BackButton.show();
     else tg.BackButton.hide();
   }
   loading();
@@ -770,6 +871,7 @@ async function route() {
     if (page === 'event') await pageEvent(args[0]);
     else if (page === 'tickets') await pageTickets();
     else if (page === 'ticket') await pageTicket(args[0]);
+    else if (page === 'promoter') await pagePromoter();
     else if (page === 'door') await pageDoor(args[0]);
     else if (page === 'admin') await pageAdmin(args[0], args[1], args[2]);
     else await pageEvents();

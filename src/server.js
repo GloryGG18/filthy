@@ -18,7 +18,8 @@ import { submitProof, reviewProof } from './repost.js';
 import { payBySquare } from './payments/paybysquare.js';
 import { eurUahRate, monoInfo, monoEnabled, handleMonoWebhook, registerMonoWebhook, listMonoAccounts } from './payments/monobank.js';
 import { readSettings, saveSettings, BANK_PROVIDERS, MONO_MODES } from './settings.js';
-import { bot, broadcastEvent, sendCsv, tgWebhookSecret, LANGS } from './bot.js';
+import { bot, broadcastEvent, sendCsv, tgWebhookSecret, LANGS, botUsername } from './bot.js';
+import { applyPromoter, attachReferral, useBalance, requestPayout, handlePayout, reviewPromoter, promoterView, adminPromoters, balanceOf } from './promoters.js';
 
 const UPLOADS = path.join(config.dataDir, 'uploads');
 const IMAGE_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp', 'image/heic': '.heic' };
@@ -42,7 +43,7 @@ async function ticketView(t, withQr = true) {
   const proof = t.tier === 'repost' ? get('SELECT status, created_at FROM repost_proofs WHERE ticket_id = ? ORDER BY id DESC LIMIT 1', t.id) : null;
   const valid = ['paid', 'used'].includes(t.status);
   return {
-    id: t.id, code: t.code, tier: t.tier, price: t.price, status: t.status, pay_method: t.pay_method,
+    id: t.id, code: t.code, tier: t.tier, price: t.price, discount: t.discount, status: t.status, pay_method: t.pay_method,
     reserved_until: t.reserved_until, paid_at: t.paid_at, used_at: t.used_at, created_at: t.created_at,
     uah_expected: t.uah_expected, proof, event: publicEvent(ev),
     qr: valid && withQr ? await QRCode.toString(qrPayload(t.code), { type: 'svg', margin: 1, errorCorrectionLevel: 'Q' }) : null,
@@ -117,8 +118,17 @@ export async function buildServer() {
   });
 
   // ----- guest -----
-  app.get('/api/me', guest, async (req) => ({
-    user: { id: req.user.tg_id, name: displayName(req.user), username: req.user.username, lang: req.user.ui_lang || 'ru', lang_chosen: !!req.user.ui_lang, role: req.user.role },
+  // Opened through a promoter's Mini App link (t.me/<bot>/<app>?startapp=ref_xxx): the signed initData carries it.
+  const startParam = (req) => new URLSearchParams(req.headers['x-telegram-init-data'] || '').get('start_param') || '';
+
+  app.get('/api/me', guest, async (req) => {
+    const ref = startParam(req).match(/^ref_(\w+)$/)?.[1];
+    if (ref) attachReferral(req.user, ref);
+    return {
+    user: {
+      id: req.user.tg_id, name: displayName(req.user), username: req.user.username, lang: req.user.ui_lang || 'ru', lang_chosen: !!req.user.ui_lang, role: req.user.role,
+      promoter: req.user.promoter_status || null, balance: balanceOf(req.user.tg_id),
+    },
     settings: {
       instagram: config.instagramHandle,
       min_followers: config.minFollowers,
@@ -126,7 +136,21 @@ export async function buildServer() {
       methods: { paybysquare: !!config.payBySquare.iban, monobank: monoEnabled() },
       mono_mode: config.monobank.mode,
     },
-  }));
+    };
+  });
+
+  // ----- promoters -----
+  const refLink = (code) => {
+    const name = botUsername();
+    return name ? `https://t.me/${name}?start=ref_${code}` : `${config.publicUrl}/?ref=${code}`;
+  };
+  app.get('/api/promoter', guest, async (req) => promoterView(req.user, refLink));
+  app.post('/api/promoter/apply', guest, async (req) => applyPromoter(req.user, req.body || {}));
+  app.post('/api/promoter/payouts', guest, async (req) => requestPayout(req.user, req.body || {}));
+  app.post('/api/tickets/:id/use-balance', guest, async (req) => {
+    const r = useBalance(req.user, myTicket(req));
+    return { ...r, ticket: await ticketView(r.ticket) };
+  });
 
   app.put('/api/me/lang', guest, async (req) => {
     const lang = req.body?.lang;
@@ -153,7 +177,7 @@ export async function buildServer() {
     return Promise.all(rows.map((t) => ticketView(t, false)));
   });
 
-  app.get('/api/tickets/:id', guest, async (req) => ticketView(myTicket(req)));
+  app.get('/api/tickets/:id', guest, async (req) => ({ ...(await ticketView(myTicket(req))), balance: balanceOf(req.user.tg_id) }));
 
   app.post('/api/tickets', guest, async (req) => ticketView(createTicket(req.user, Number(req.body?.event_id), req.body?.tier)));
 
@@ -382,6 +406,13 @@ export async function buildServer() {
       `${q}%`, `%${q.replace(/^@/, '')}%`, `%${q}%`,
     );
   });
+
+  app.get('/api/admin/promoters', admin, async () => adminPromoters());
+  app.post('/api/admin/promoters/:id', admin, async (req) => {
+    const u = reviewPromoter(Number(req.params.id), !!req.body?.approve);
+    return { id: u.tg_id, status: u.promoter_status };
+  });
+  app.post('/api/admin/payouts/:id', admin, async (req) => handlePayout(req.user.tg_id, Number(req.params.id), !!req.body?.paid));
 
   app.get('/api/admin/staff', admin, async () =>
     all(`SELECT tg_id, username, first_name, last_name, role FROM users WHERE role != 'guest' ORDER BY role, first_name`)
