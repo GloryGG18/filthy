@@ -18,8 +18,11 @@ export async function eurUahRate() {
   return rateCache.rate || config.monobank.fallbackRate;
 }
 
+const watchedAccount = () => (config.monobank.mode === 'card' ? config.monobank.accountId : config.monobank.jarId);
+
 function ingest(item, account) {
-  if (config.monobank.jarId && account !== config.monobank.jarId) return null;
+  const card = config.monobank.mode === 'card';
+  if (watchedAccount() && account !== watchedAccount()) return null;
   if (!(item.amount > 0)) return null; // only incoming money
   return recordPayment({
     source: 'monobank',
@@ -30,6 +33,7 @@ function ingest(item, account) {
     payer: item.description,
     raw: item,
     receivedAt: item.time * 1000,
+    onlyIfMatched: card,
   });
 }
 
@@ -52,29 +56,40 @@ export async function registerMonoWebhook(url) {
 // Backup in case a webhook is missed: re-read the jar statement for the last few hours.
 // monobank allows one statement call per 60 s, so this runs rarely.
 export async function pollMonoStatement(hours = 6) {
-  const { token, jarId } = config.monobank;
-  if (!token || !jarId) return;
+  const { token } = config.monobank;
+  const account = watchedAccount();
+  if (!token || !account) return;
   const from = Math.floor(Date.now() / 1000) - hours * 3600;
-  const res = await fetch(`${API}/personal/statement/${jarId}/${from}`, { headers: { 'X-Token': token } });
+  const res = await fetch(`${API}/personal/statement/${account}/${from}`, { headers: { 'X-Token': token } });
   if (!res.ok) return console.warn('monobank statement:', res.status);
-  for (const item of await res.json()) ingest(item, jarId);
+  for (const item of await res.json()) ingest(item, account);
 }
 
+export const monoEnabled = () => (config.monobank.mode === 'card' ? !!config.monobank.card : !!config.monobank.jarUrl);
+
 export function monoInfo(ticket, rate) {
+  const card = config.monobank.mode === 'card';
   return {
-    jar_url: config.monobank.jarUrl || null,
+    mode: card ? 'card' : 'jar',
+    card: card ? config.monobank.card.replace(/(\d{4})(?=\d)/g, '$1 ') : null,
+    jar_url: card ? null : config.monobank.jarUrl || null,
     uah: ticket.uah_expected,
     rate,
     comment: ticket.code,
   };
 }
 
-// Lists the token owner's jars so the admin can pick one instead of hunting for its ID.
-export async function listMonoJars(token = config.monobank.token) {
-  if (!token) return [];
+// Lists the token owner's jars and hryvnia cards so the admin can pick one instead of hunting for its ID.
+export async function listMonoAccounts(token = config.monobank.token) {
+  if (!token) return { jars: [], cards: [] };
   const res = await fetch(`${API}/personal/client-info`, { headers: { 'X-Token': token }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`monobank ${res.status}`);
-  return ((await res.json()).jars ?? []).map((j) => ({
-    id: j.id, title: j.title, url: j.sendId ? `https://send.monobank.ua/${j.sendId.startsWith('jar/') ? j.sendId : 'jar/' + j.sendId}` : null, balance: j.balance,
-  }));
+  const info = await res.json();
+  return {
+    jars: (info.jars ?? []).map((j) => ({
+      id: j.id, title: j.title, url: j.sendId ? `https://send.monobank.ua/${j.sendId.startsWith('jar/') ? j.sendId : 'jar/' + j.sendId}` : null, balance: j.balance,
+    })),
+    cards: (info.accounts ?? []).filter((a) => a.currencyCode === 980 && a.maskedPan?.length)
+      .map((a) => ({ id: a.id, pan: a.maskedPan[0], type: a.type, balance: a.balance })),
+  };
 }

@@ -228,7 +228,7 @@ async function pageTicket(id, method) {
     return render(h('div', { class: 'stack' }, header,
       h('h2', {}, t.pay_how),
       methods.paybysquare ? opt('paybysquare', t.pbs, t.pbs_desc) : null,
-      methods.monobank ? opt('monobank', t.mono, t.mono_desc) : null,
+      methods.monobank ? opt('monobank', me.settings.mono_mode === 'card' ? t.mono_card_label : t.mono, t.mono_desc) : null,
       !methods.paybysquare && !methods.monobank ? h('p', { class: 'muted' }, t.no_methods) : null,
       h('button', { class: 'btn ghost', onclick: () => cancel(x) }, t.cancel_ticket)));
   }
@@ -272,11 +272,18 @@ async function pageTicket(id, method) {
         h('div', { class: 'muted small' }, t.amount),
         h('div', { class: 'ticket-code' }, uah(pay.monobank.uah)),
         h('div', { class: 'muted small' }, `${eur(x.price)} · ${t.rate} ${pay.monobank.rate.toFixed(2)}`)),
-      h('div', { class: 'card fields' },
-        fieldRow(t.comment, pay.monobank.comment, pay.monobank.comment),
-        fieldRow(t.amount, uah(pay.monobank.uah), String(Math.round(pay.monobank.uah / 100)))),
-      h('p', { class: 'small muted' }, t.mono_steps),
-      h('button', { class: 'btn', onclick: () => (inTg ? tg.openLink(pay.monobank.jar_url) : window.open(pay.monobank.jar_url)) }, t.mono_open),
+      ...(pay.monobank.mode === 'card' ? [
+        h('div', { class: 'card fields' },
+          fieldRow(t.card_no, pay.monobank.card, pay.monobank.card.replace(/\s/g, '')),
+          fieldRow(t.exact_amount, uah(pay.monobank.uah), (pay.monobank.uah / 100).toFixed(2))),
+        h('p', { class: 'small muted' }, t.mono_card_steps),
+      ] : [
+        h('div', { class: 'card fields' },
+          fieldRow(t.comment, pay.monobank.comment, pay.monobank.comment),
+          fieldRow(t.amount, uah(pay.monobank.uah), String(Math.round(pay.monobank.uah / 100)))),
+        h('p', { class: 'small muted' }, t.mono_steps),
+        h('button', { class: 'btn', onclick: () => (inTg ? tg.openLink(pay.monobank.jar_url) : window.open(pay.monobank.jar_url)) }, t.mono_open),
+      ]),
     ];
 
   render(h('div', { class: 'stack' }, header, timer, ...details,
@@ -512,7 +519,7 @@ async function pageAdmin(section = 'events', id, sub) {
 }
 
 async function adminSettings(fill) {
-  const { values: v, bank_providers } = await api('/api/admin/settings');
+  const { values: v, bank_providers, mono_modes } = await api('/api/admin/settings');
   const inputs = {};
   const clear = new Set();
   const text = (key, label, attrs = {}) => {
@@ -528,15 +535,21 @@ async function adminSettings(fill) {
           clear.add(key); inputs[key].value = ''; inputs[key].placeholder = t.s_will_clear; e.target.remove();
         } }, '✕') : null));
   };
+  inputs.mono_mode = h('select', {}, mono_modes.map((m) => h('option', { value: m, selected: v.mono_mode === m }, t[`s_mode_${m}`])));
   inputs.bank_provider = h('select', {}, bank_providers.map((p) => h('option', { value: p, selected: v.bank_provider === p }, t[`s_bank_${p}`])));
   const jars = h('div', { class: 'stack' });
   const findJars = async () => {
     jars.replaceChildren(h('div', { class: 'spinner', style: 'margin:8px auto' }));
     try {
-      const list = await api('/api/admin/settings/mono-jars');
-      jars.replaceChildren(...(list.length ? list.map((j) => h('button', { class: 'btn secondary', onclick: () => {
-        inputs.mono_jar_id.value = j.id; if (j.url) inputs.mono_jar_url.value = j.url; toast('✓');
-      } }, `${j.title} · ${uah(j.balance || 0)}`)) : [h('p', { class: 'muted small' }, t.s_no_jars)]));
+      const { jars: list, cards } = await api('/api/admin/settings/mono-jars');
+      jars.replaceChildren(...(list.length || cards.length ? [
+        ...cards.map((c) => h('button', { class: 'btn secondary', onclick: () => {
+          inputs.mono_account_id.value = c.id; inputs.mono_mode.value = 'card'; toast('✓');
+        } }, `💳 ${c.pan} · ${c.type}`)),
+        ...list.map((j) => h('button', { class: 'btn secondary', onclick: () => {
+          inputs.mono_jar_id.value = j.id; if (j.url) inputs.mono_jar_url.value = j.url; inputs.mono_mode.value = 'jar'; toast('✓');
+        } }, `🫙 ${j.title} · ${uah(j.balance || 0)}`)),
+      ] : [h('p', { class: 'muted small' }, t.s_no_jars)]));
     } catch (e) { jars.replaceChildren(h('p', { class: 'muted small' }, e.message)); }
   };
   const save = async () => {
@@ -566,8 +579,12 @@ async function adminSettings(fill) {
           if (tg?.openLink) { e.preventDefault(); tg.openLink('https://api.monobank.ua/'); }
         } }, 'api.monobank.ua ↗')),
       secret('mono_token', t.s_mono_token),
-      h('button', { class: 'btn sm secondary', style: 'margin-top:10px', onclick: findJars }, t.s_find_jars),
+      h('div', { class: 'field' }, h('label', {}, t.s_mono_mode), inputs.mono_mode),
+      h('p', { class: 'muted small' }, t.s_card_hint),
+      h('button', { class: 'btn sm secondary', style: 'margin-top:10px', onclick: findJars }, t.s_find_accounts),
       jars,
+      text('mono_card', t.s_card, { inputmode: 'numeric', placeholder: '5375 4141 0000 0000' }),
+      text('mono_account_id', t.s_account_id),
       text('mono_jar_id', t.s_jar_id),
       text('mono_jar_url', t.s_jar_url, { placeholder: 'https://send.monobank.ua/jar/…' }),
       text('mono_tolerance', t.s_tolerance, { inputmode: 'decimal' })),

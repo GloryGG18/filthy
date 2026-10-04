@@ -75,6 +75,11 @@ export const config = {
   },
 
   monobank: {
+    // jar: guests pay into a monobank jar (its page shows the collected total to everyone);
+    // card: guests transfer to a card number and each ticket gets a unique amount with kopecks.
+    mode: env.MONO_MODE || (env.MONO_CARD ? 'card' : 'jar'),
+    card: env.MONO_CARD || '',
+    accountId: env.MONO_ACCOUNT_ID || '',
     token: env.MONO_TOKEN || '',
     jarId: env.MONO_JAR_ID || '',
     jarUrl: env.MONO_JAR_URL || '',

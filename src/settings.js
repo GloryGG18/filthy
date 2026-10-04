@@ -21,12 +21,17 @@ export const FIELDS = {
   tatra_client_id: ['bank.tatra', 'clientId', 'text'],
   tatra_client_secret: ['bank.tatra', 'clientSecret', 'secret'],
   tatra_account_id: ['bank.tatra', 'accountId', 'text'],
+  mono_mode: ['monobank', 'mode', 'choice'],
+  mono_card: ['monobank', 'card', 'text'],
+  mono_account_id: ['monobank', 'accountId', 'text'],
   mono_token: ['monobank', 'token', 'secret'],
   mono_jar_id: ['monobank', 'jarId', 'text'],
   mono_jar_url: ['monobank', 'jarUrl', 'text'],
   mono_tolerance: ['monobank', 'tolerance', 'number'],
 };
 export const BANK_PROVIDERS = ['none', 'fio', 'tatra'];
+export const MONO_MODES = ['jar', 'card'];
+const CHOICES = { bank_provider: BANK_PROVIDERS, mono_mode: MONO_MODES };
 
 const section = (path) => path.split('.').reduce((o, k) => o[k], config);
 
@@ -54,7 +59,11 @@ export function saveSettings(input, adminId, clear = []) {
     if (clear.includes(key) && kind === 'secret') v = '';
     else if (v === undefined || (kind === 'secret' && v === '')) continue;
     v = String(v).trim();
-    if (kind === 'choice' && !BANK_PROVIDERS.includes(v)) throw new AppError('bad_bank_provider');
+    if (kind === 'choice' && !CHOICES[key].includes(v)) throw new AppError('bad_choice');
+    if (key === 'mono_card') {
+      v = v.replace(/\D/g, '');
+      if (v && v.length !== 16) throw new AppError('bad_card');
+    }
     if (kind === 'number' && !(Number(v) > 0 && Number(v) <= 1)) throw new AppError('bad_tolerance');
     if (key === 'pbs_iban' && v && !/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v.replace(/\s/g, '').toUpperCase())) throw new AppError('bad_iban');
     if (key === 'mono_jar_url' && v && !/^https:\/\//.test(v)) throw new AppError('bad_url');

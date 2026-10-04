@@ -16,8 +16,8 @@ import {
 } from './tickets.js';
 import { submitProof, reviewProof } from './repost.js';
 import { payBySquare } from './payments/paybysquare.js';
-import { eurUahRate, monoInfo, handleMonoWebhook, registerMonoWebhook, listMonoJars } from './payments/monobank.js';
-import { readSettings, saveSettings, BANK_PROVIDERS } from './settings.js';
+import { eurUahRate, monoInfo, monoEnabled, handleMonoWebhook, registerMonoWebhook, listMonoAccounts } from './payments/monobank.js';
+import { readSettings, saveSettings, BANK_PROVIDERS, MONO_MODES } from './settings.js';
 import { bot, broadcastEvent, sendCsv, tgWebhookSecret, LANGS } from './bot.js';
 
 const UPLOADS = path.join(config.dataDir, 'uploads');
@@ -123,7 +123,8 @@ export async function buildServer() {
       instagram: config.instagramHandle,
       min_followers: config.minFollowers,
       reservation_minutes: config.reservationMinutes,
-      methods: { paybysquare: !!config.payBySquare.iban, monobank: !!config.monobank.jarUrl },
+      methods: { paybysquare: !!config.payBySquare.iban, monobank: monoEnabled() },
+      mono_mode: config.monobank.mode,
     },
   }));
 
@@ -389,7 +390,7 @@ export async function buildServer() {
   });
 
   // ----- payment settings (override .env, applied without restart) -----
-  app.get('/api/admin/settings', admin, async () => ({ values: readSettings(), bank_providers: BANK_PROVIDERS }));
+  app.get('/api/admin/settings', admin, async () => ({ values: readSettings(), bank_providers: BANK_PROVIDERS, mono_modes: MONO_MODES }));
 
   app.put('/api/admin/settings', admin, async (req) => {
     const changed = saveSettings(req.body?.values || {}, req.user.tg_id, req.body?.clear || []);
@@ -402,7 +403,7 @@ export async function buildServer() {
 
   app.get('/api/admin/settings/mono-jars', admin, async () => {
     try {
-      return await listMonoJars();
+      return await listMonoAccounts();
     } catch (e) {
       throw new AppError('monobank_unreachable', 502);
     }

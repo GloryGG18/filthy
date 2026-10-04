@@ -14,7 +14,7 @@ export const dict = {
       'Посилання для гостей: у застосунку monobank відкрий банку → «Поділитися» → скопіюй send.monobank.ua/jar/…',
       'Токен дає лише перегляд виписки, переказувати гроші ним не можна. Відкликати його можна там само на api.monobank.ua.',
     ],
-    s_mono_token: 'Токен monobank (api.monobank.ua)', s_find_jars: 'Знайти мої банки', s_no_jars: 'Банок не знайдено', s_jar_id: 'ID банки', s_jar_url: 'Посилання на банку для гостей',
+    s_mono_mode: 'Як гості платять', s_mode_jar: 'Банка (видно зібрану суму)', s_mode_card: 'Переказ на картку (суму не видно)', s_card: 'Номер картки для переказу', s_account_id: 'ID рахунку картки', s_find_accounts: 'Знайти мої банки й картки', s_card_hint: 'Для режиму «картка»: введи номер картки, натисни «Знайти мої банки й картки» і вибери цю ж картку, щоб бекенд читав саме її виписку. Інші надходження на картку застосунок ігнорує.', s_mono_token: 'Токен monobank (api.monobank.ua)', s_find_jars: 'Знайти мої банки', s_no_jars: 'Банок не знайдено', s_jar_id: 'ID банки', s_jar_url: 'Посилання на банку для гостей',
     s_tolerance: 'Мінімальна частка суми в гривнях (0.98 = 98 %)',
     events: 'Вечірки', my_tickets: 'Мої квитки', door: 'Вхід', admin: 'Адмін',
     no_events: 'Анонсів поки немає. Слідкуй за @filthy.sk',
@@ -35,7 +35,7 @@ export const dict = {
     pbs_steps: 'Відскануй QR у своєму банківському застосунку або натисни і утримуй, щоб зберегти. Квиток активується автоматично, щойно прийде переказ.',
     iban: 'IBAN', beneficiary: 'Отримувач', amount: 'Сума', vs: 'Варіабільний символ',
     mono_steps: 'Відкрий банку і перекажи рівно цю суму. У коментарі обовʼязково вкажи номер квитка, інакше ми не знайдемо платіж.',
-    mono_open: 'Відкрити банку monobank', comment: 'Коментар', rate: 'Курс',
+    mono_card_label: 'Переказ з української картки', mono_card_steps: 'Перекажи на цю картку рівно цю суму разом з копійками: саме за нею ми знайдемо твій платіж. Переказати можна з будь-якого українського банку.', card_no: 'Картка', exact_amount: 'Точна сума', mono_open: 'Відкрити банку monobank', comment: 'Коментар', rate: 'Курс',
     reserved: (m) => `Квиток заброньовано ще на ${m} хв`, reservation_over: 'Бронь закінчилась, натисни, щоб оновити',
     waiting_payment: 'Чекаємо на оплату…', copy: 'Копіювати', copied: 'Скопійовано',
     change_method: 'Інший спосіб оплати', cancel_ticket: 'Скасувати',
@@ -82,7 +82,7 @@ export const dict = {
       'Ссылка для гостей: в приложении monobank открой банку → «Поделиться» → скопируй send.monobank.ua/jar/…',
       'Токен даёт только просмотр выписки, переводить деньги им нельзя. Отозвать его можно там же на api.monobank.ua.',
     ],
-    s_mono_token: 'Токен monobank (api.monobank.ua)', s_find_jars: 'Найти мои банки', s_no_jars: 'Банок не найдено', s_jar_id: 'ID банки', s_jar_url: 'Ссылка на банку для гостей',
+    s_mono_mode: 'Как гости платят', s_mode_jar: 'Банка (видно собранную сумму)', s_mode_card: 'Перевод на карту (сумму не видно)', s_card: 'Номер карты для перевода', s_account_id: 'ID счёта карты', s_find_accounts: 'Найти мои банки и карты', s_card_hint: 'Для режима «карта»: введи номер карты, нажми «Найти мои банки и карты» и выбери эту же карту, чтобы бэкенд читал именно её выписку. Другие поступления на карту приложение игнорирует.', s_mono_token: 'Токен monobank (api.monobank.ua)', s_find_jars: 'Найти мои банки', s_no_jars: 'Банок не найдено', s_jar_id: 'ID банки', s_jar_url: 'Ссылка на банку для гостей',
     s_tolerance: 'Минимальная доля суммы в гривнах (0.98 = 98 %)',
     events: 'Вечеринки', my_tickets: 'Мои билеты', door: 'Вход', admin: 'Админ',
     no_events: 'Анонсов пока нет. Следи за @filthy.sk',
@@ -103,7 +103,7 @@ export const dict = {
     pbs_steps: 'Отсканируй QR в своём банковском приложении или нажми и удерживай, чтобы сохранить. Билет активируется автоматически, как только придёт перевод.',
     iban: 'IBAN', beneficiary: 'Получатель', amount: 'Сумма', vs: 'Вариабельный символ',
     mono_steps: 'Открой банку и переведи ровно эту сумму. В комментарии обязательно укажи номер билета, иначе мы не найдём платёж.',
-    mono_open: 'Открыть банку monobank', comment: 'Комментарий', rate: 'Курс',
+    mono_card_label: 'Перевод с украинской карты', mono_card_steps: 'Переведи на эту карту ровно эту сумму вместе с копейками: именно по ней мы найдём твой платёж. Перевести можно из любого украинского банка.', card_no: 'Карта', exact_amount: 'Точная сумма', mono_open: 'Открыть банку monobank', comment: 'Комментарий', rate: 'Курс',
     reserved: (m) => `Билет забронирован ещё на ${m} мин`, reservation_over: 'Бронь закончилась, нажми, чтобы обновить',
     waiting_payment: 'Ждём оплату…', copy: 'Копировать', copied: 'Скопировано',
     change_method: 'Другой способ оплаты', cancel_ticket: 'Отменить',
@@ -148,7 +148,7 @@ export const dict = {
       'Link for guests: in the monobank app open the jar → “Share” → copy send.monobank.ua/jar/…',
       'The token only reads the statement and cannot move money. You can revoke it on api.monobank.ua.',
     ],
-    s_mono_token: 'monobank token (api.monobank.ua)', s_find_jars: 'Find my jars', s_no_jars: 'No jars found', s_jar_id: 'Jar ID', s_jar_url: 'Jar link for guests',
+    s_mono_mode: 'How guests pay', s_mode_jar: 'Jar (collected total is visible)', s_mode_card: 'Card transfer (total stays hidden)', s_card: 'Card number for transfers', s_account_id: 'Card account ID', s_find_accounts: 'Find my jars and cards', s_card_hint: 'For card mode: enter the card number, tap “Find my jars and cards” and pick the same card so the backend reads its statement. Other money arriving on the card is ignored.', s_mono_token: 'monobank token (api.monobank.ua)', s_find_jars: 'Find my jars', s_no_jars: 'No jars found', s_jar_id: 'Jar ID', s_jar_url: 'Jar link for guests',
     s_tolerance: 'Minimum share of the UAH amount (0.98 = 98%)',
     events: 'Parties', my_tickets: 'My tickets', door: 'Door', admin: 'Admin',
     no_events: 'No announcements yet. Follow @filthy.sk',
@@ -169,7 +169,7 @@ export const dict = {
     pbs_steps: 'Scan the QR in your banking app, or long-press to save it. The ticket activates automatically as soon as the transfer arrives.',
     iban: 'IBAN', beneficiary: 'Beneficiary', amount: 'Amount', vs: 'Variable symbol',
     mono_steps: 'Open the jar and send exactly this amount. Put the ticket number in the comment, otherwise we can’t find your payment.',
-    mono_open: 'Open monobank jar', comment: 'Comment', rate: 'Rate',
+    mono_card_label: 'Transfer from a Ukrainian card', mono_card_steps: 'Send exactly this amount, kopecks included, to this card: that is how we find your payment. Any Ukrainian bank works.', card_no: 'Card', exact_amount: 'Exact amount', mono_open: 'Open monobank jar', comment: 'Comment', rate: 'Rate',
     reserved: (m) => `Ticket reserved for ${m} more min`, reservation_over: 'Reservation ended, tap to renew',
     waiting_payment: 'Waiting for payment…', copy: 'Copy', copied: 'Copied',
     change_method: 'Another payment method', cancel_ticket: 'Cancel',
@@ -203,9 +203,9 @@ export const dict = {
 };
 
 export const errors = {
-  uk: { sold_out: 'Квитки розпродано', sales_closed: 'Продаж закрито', not_payable: 'Цей квиток не можна оплатити', unauthorized: 'Відкрий застосунок через бота в Telegram', file_too_large: 'Файл завеликий (до 10 МБ)', bad_file_type: 'Потрібне зображення JPG або PNG', user_not_found: 'Користувача не знайдено. Він має спершу відкрити бота.', publish_first: 'Спершу опублікуй подію', bad_iban: 'Невірний IBAN', bad_url: 'Посилання має починатися з https://', bad_tolerance: 'Частка має бути від 0 до 1', monobank_unreachable: 'monobank не відповідає або токен невірний', event_has_sales: 'На подію вже є оплачені квитки, її не можна видалити. Постав статус «Закрито» або «Чернетка», щоб сховати.' },
-  ru: { sold_out: 'Билеты распроданы', sales_closed: 'Продажа закрыта', not_payable: 'Этот билет нельзя оплатить', unauthorized: 'Открой приложение через бота в Telegram', file_too_large: 'Файл слишком большой (до 10 МБ)', bad_file_type: 'Нужно изображение JPG или PNG', user_not_found: 'Пользователь не найден. Он должен сначала открыть бота.', publish_first: 'Сначала опубликуй событие', bad_iban: 'Неверный IBAN', bad_url: 'Ссылка должна начинаться с https://', bad_tolerance: 'Доля должна быть от 0 до 1', monobank_unreachable: 'monobank не отвечает или токен неверный', event_has_sales: 'На событие уже есть оплаченные билеты, его нельзя удалить. Поставь статус «Закрыто» или «Черновик», чтобы скрыть.' },
-  en: { sold_out: 'Sold out', sales_closed: 'Sales are closed', not_payable: 'This ticket can’t be paid', unauthorized: 'Open the app via the Telegram bot', file_too_large: 'File too large (max 10 MB)', bad_file_type: 'Use a JPG or PNG image', user_not_found: 'User not found. They need to open the bot first.', publish_first: 'Publish the event first', bad_iban: 'Invalid IBAN', bad_url: 'Link must start with https://', bad_tolerance: 'Share must be between 0 and 1', monobank_unreachable: 'monobank is unreachable or the token is wrong', event_has_sales: 'This event already has paid tickets, so it can’t be deleted. Set it to Closed or Draft to hide it.' },
+  uk: { bad_card: 'Номер картки має містити 16 цифр', bad_choice: 'Невірне значення', sold_out: 'Квитки розпродано', sales_closed: 'Продаж закрито', not_payable: 'Цей квиток не можна оплатити', unauthorized: 'Відкрий застосунок через бота в Telegram', file_too_large: 'Файл завеликий (до 10 МБ)', bad_file_type: 'Потрібне зображення JPG або PNG', user_not_found: 'Користувача не знайдено. Він має спершу відкрити бота.', publish_first: 'Спершу опублікуй подію', bad_iban: 'Невірний IBAN', bad_url: 'Посилання має починатися з https://', bad_tolerance: 'Частка має бути від 0 до 1', monobank_unreachable: 'monobank не відповідає або токен невірний', event_has_sales: 'На подію вже є оплачені квитки, її не можна видалити. Постав статус «Закрито» або «Чернетка», щоб сховати.' },
+  ru: { bad_card: 'Номер карты должен содержать 16 цифр', bad_choice: 'Неверное значение', sold_out: 'Билеты распроданы', sales_closed: 'Продажа закрыта', not_payable: 'Этот билет нельзя оплатить', unauthorized: 'Открой приложение через бота в Telegram', file_too_large: 'Файл слишком большой (до 10 МБ)', bad_file_type: 'Нужно изображение JPG или PNG', user_not_found: 'Пользователь не найден. Он должен сначала открыть бота.', publish_first: 'Сначала опубликуй событие', bad_iban: 'Неверный IBAN', bad_url: 'Ссылка должна начинаться с https://', bad_tolerance: 'Доля должна быть от 0 до 1', monobank_unreachable: 'monobank не отвечает или токен неверный', event_has_sales: 'На событие уже есть оплаченные билеты, его нельзя удалить. Поставь статус «Закрыто» или «Черновик», чтобы скрыть.' },
+  en: { bad_card: 'Card number must have 16 digits', bad_choice: 'Invalid value', sold_out: 'Sold out', sales_closed: 'Sales are closed', not_payable: 'This ticket can’t be paid', unauthorized: 'Open the app via the Telegram bot', file_too_large: 'File too large (max 10 MB)', bad_file_type: 'Use a JPG or PNG image', user_not_found: 'User not found. They need to open the bot first.', publish_first: 'Publish the event first', bad_iban: 'Invalid IBAN', bad_url: 'Link must start with https://', bad_tolerance: 'Share must be between 0 and 1', monobank_unreachable: 'monobank is unreachable or the token is wrong', event_has_sales: 'This event already has paid tickets, so it can’t be deleted. Set it to Closed or Draft to hide it.' },
 };
 
 export const LANG_NAMES = { ru: 'Русский', uk: 'Українська', en: 'English' };

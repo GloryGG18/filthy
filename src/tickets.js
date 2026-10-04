@@ -95,13 +95,27 @@ export function startPayment(ticket, method, uahRate) {
   return tx(() => {
     const ev = get('SELECT * FROM events WHERE id = ?', ticket.event_id);
     if (ticket.status !== 'awaiting_payment' || ticket.reserved_until < now()) assertSeat(ev);
-    const uah = method === 'monobank' ? Math.ceil((ticket.price / 100) * uahRate) * 100 : ticket.uah_expected;
+    const uah = method === 'monobank' ? uahAmount(ticket, uahRate) : ticket.uah_expected;
     run(
       `UPDATE tickets SET status = 'awaiting_payment', reserved_until = ?, uah_expected = ? WHERE id = ?`,
       now() + config.reservationMinutes * 60_000, uah, ticket.id,
     );
     return get('SELECT * FROM tickets WHERE id = ?', ticket.id);
   });
+}
+
+// Unpaid tickets that may still receive a transfer; card payments are matched against these by exact amount.
+const OPEN_UAH = `status IN ('approved','awaiting_payment','expired') AND uah_expected IS NOT NULL AND reserved_until > ?`;
+const openSince = () => now() - 7 * 86400_000;
+
+// Whole hryvnias at today's rate. In card mode a transfer carries no reliable comment, so each open
+// ticket also gets its own kopecks (487.01, 487.02 …) and the amount alone identifies it.
+function uahAmount(ticket, rate) {
+  const base = Math.ceil((ticket.price / 100) * rate) * 100;
+  if (config.monobank.mode !== 'card') return base;
+  if (ticket.uah_expected && ticket.uah_expected - (ticket.uah_expected % 100) === base && ticket.uah_expected % 100) return ticket.uah_expected;
+  const taken = new Set(all(`SELECT uah_expected FROM tickets WHERE ${OPEN_UAH} AND id != ?`, openSince(), ticket.id).map((r) => r.uah_expected));
+  for (let amount = base + 1; ; amount++) if (amount % 100 && !taken.has(amount)) return amount;
 }
 
 export function markPaid(ticketId, method, paidAt = now()) {
@@ -129,10 +143,16 @@ export function expireReservations() {
 // ---------- incoming money ----------
 
 // Records a bank/monobank transaction and activates the ticket it references when the amount is enough.
-export function recordPayment({ source, externalId, amount, currency, reference, payer, raw, receivedAt = now() }) {
+// `onlyIfMatched` skips money that matches no ticket (card mode reads a personal card's statement).
+export function recordPayment({ source, externalId, amount, currency, reference, payer, raw, receivedAt = now(), onlyIfMatched = false }) {
   if (get('SELECT 1 FROM payments WHERE source = ? AND external_id = ?', source, externalId)) return null;
   const code = String(reference || '').match(/\b(\d{8})\b/)?.[1];
-  const ticket = code ? get('SELECT * FROM tickets WHERE code = ?', code) : null;
+  let ticket = code ? get('SELECT * FROM tickets WHERE code = ?', code) : null;
+  if (!ticket && currency === 'UAH' && config.monobank.mode === 'card') {
+    const byAmount = all(`SELECT * FROM tickets WHERE ${OPEN_UAH} AND uah_expected = ?`, openSince(), amount);
+    if (byAmount.length === 1) ticket = byAmount[0];
+  }
+  if (!ticket && onlyIfMatched) return null;
   let status = 'unmatched';
   if (ticket) {
     const enough =

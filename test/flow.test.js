@@ -269,3 +269,40 @@ test('admin removes a poster and deletes an event only while nothing is paid', a
   assert.equal(del.status, 409);
   assert.equal(del.body.error, 'event_has_sales');
 });
+
+test('card mode: unique UAH amounts identify transfers without a comment; other income is ignored', async () => {
+  const set = (values) => call(ADMIN, 'PUT', '/api/admin/settings', { values });
+  assert.equal((await set({ mono_mode: 'card', mono_card: '5375 4141 2222 3333', mono_account_id: 'card-acc' })).status, 200);
+  assert.equal((await set({ mono_card: '1234' })).body.error, 'bad_card');
+  const me = (await call(GUEST, 'GET', '/api/me')).body;
+  assert.equal(me.settings.mono_mode, 'card');
+  assert.ok(me.settings.methods.monobank);
+
+  const ev = (await call(ADMIN, 'POST', '/api/admin/events', { title: 'Card night', starts_at: Date.now() + 86400_000, status: 'published' })).body;
+  const buy = async (user) => {
+    const tk = (await call(user, 'POST', '/api/tickets', { event_id: ev.id, tier: 'online' })).body;
+    return { tk, pay: (await call(user, 'POST', `/api/tickets/${tk.id}/pay`, { method: 'monobank' })).body.monobank };
+  };
+  const a = await buy(GUEST), b = await buy(DOOR);
+  assert.equal(a.pay.mode, 'card');
+  assert.equal(a.pay.card, '5375 4141 2222 3333');
+  assert.equal(a.pay.jar_url, null);
+  assert.notEqual(a.pay.uah, b.pay.uah, 'each open ticket gets its own amount');
+  assert.ok(a.pay.uah % 100 && b.pay.uah % 100, 'amounts carry kopecks');
+  // Re-opening payment keeps the same amount, so a transfer already sent still matches.
+  assert.equal((await call(GUEST, 'POST', `/api/tickets/${a.tk.id}/pay`, { method: 'monobank' })).body.monobank.uah, a.pay.uah);
+
+  const before = (await call(ADMIN, 'GET', '/api/admin/payments')).body.length;
+  const hook = (id, account, amount) => call(null, 'POST', '/hooks/monobank/hook', {
+    type: 'StatementItem', data: { account, statementItem: { id, time: Math.floor(Date.now() / 1000), amount, description: 'Від: Олег' } },
+  });
+  await hook('c-0', 'other-acc', b.pay.uah);
+  assert.equal((await call(DOOR, 'GET', `/api/tickets/${b.tk.id}`)).body.status, 'awaiting_payment', 'other accounts are ignored');
+  await hook('c-1', 'card-acc', 123456);
+  await hook('c-2', 'card-acc', b.pay.uah);
+  assert.equal((await call(DOOR, 'GET', `/api/tickets/${b.tk.id}`)).body.status, 'paid');
+  assert.equal((await call(GUEST, 'GET', `/api/tickets/${a.tk.id}`)).body.status, 'awaiting_payment');
+  assert.equal((await call(ADMIN, 'GET', '/api/admin/payments')).body.length, before, 'unrelated card income is not flagged');
+
+  await set({ mono_mode: 'jar' });
+});
