@@ -1,0 +1,23 @@
+{
+  "name": "filthy-tickets",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node --no-warnings src/index.js",
+    "dev": "DEV_AUTH=1 node --no-warnings --watch src/index.js",
+    "test": "node --no-warnings --test test/*.test.js",
+    "seed": "node --no-warnings scripts/seed.js"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^10.1.2",
+    "@fastify/static": "^10.1.5",
+    "bysquare": "^4.1.0",
+    "fastify": "^5.12.5",
+    "grammy": "^1.46.0",
+    "qrcode": "^1.5.4"
+  },
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.13"
+  }
+}
