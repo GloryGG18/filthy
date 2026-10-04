@@ -4,8 +4,9 @@ const tg = window.Telegram?.WebApp;
 const inTg = !!tg?.initData; // the SDK object also exists in a plain browser, but without initData
 tg?.ready();
 tg?.expand();
-tg?.setHeaderColor?.('#0a0a0a');
-tg?.setBackgroundColor?.('#0a0a0a');
+tg?.setHeaderColor?.('#000000');
+tg?.setBackgroundColor?.('#000000');
+tg?.setBottomBarColor?.('#000000');
 
 const TZ = 'Europe/Bratislava';
 const LANGS = ['ru', 'uk', 'en'];
@@ -104,7 +105,7 @@ const go = (hash) => { location.hash = hash; };
 
 function eventCard(e) {
   return h('a', { class: 'card link event-card', href: `#event/${e.id}` },
-    e.poster ? h('img', { class: 'poster', src: e.poster, alt: '' }) : null,
+    e.poster ? h('img', { class: 'poster', src: e.poster, alt: '' }) : h('div', { class: 'poster placeholder' }),
     h('div', { class: 'body' },
       h('div', { class: 'date' }, fmtDate(e.starts_at)),
       h('h2', {}, e.title),
@@ -139,7 +140,7 @@ async function pageEvent(id) {
       h('div', { class: 'price' }, eur(price)));
 
   render(h('div', { class: 'stack' },
-    e.poster ? h('img', { class: 'poster', src: e.poster, alt: '' }) : null,
+    e.poster ? h('img', { class: 'poster', src: e.poster, alt: '' }) : h('div', { class: 'poster placeholder' }),
     h('div', {},
       h('div', { class: 'date' }, fmtDate(e.starts_at)),
       h('h1', {}, e.title),
@@ -744,7 +745,11 @@ async function route() {
   window.scrollTo(0, 0);
 }
 
-const langButton = () => { document.getElementById('lang').textContent = `${LANG_FLAGS[lang]} ${lang.toUpperCase()} ▾`; };
+const langButton = () => {
+  document.getElementById('lang').textContent = `${LANG_FLAGS[lang]} ${lang.toUpperCase()} ▾`;
+  document.getElementById('tagline').textContent = dict[lang].tagline;
+  document.documentElement.lang = lang;
+};
 
 function setLang(l, { save = true } = {}) {
   lang = l; t = dict[l];

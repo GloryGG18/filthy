@@ -1,16 +1,21 @@
 <!doctype html>
-<html lang="uk">
+<html lang="ru">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
   <title>Filthy</title>
+  <link rel="icon" href="/logo.jpg">
+  <meta name="theme-color" content="#000000">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 </head>
 <body>
-  <header class="top"><a href="#" class="logo">FILTHY</a><button id="lang" class="lang"></button></header>
+  <header class="top">
+    <a href="#" class="brand"><img src="/logo.jpg" alt="" class="avatar"><span><span class="logo">FILTHY</span><span id="tagline" class="tagline"></span></span></a>
+    <button id="lang" class="lang"></button>
+  </header>
   <main id="app"></main>
   <nav id="tabs" class="tabs"></nav>
   <div id="toast" class="toast"></div>
