@@ -781,7 +781,6 @@ async function route() {
 
 const langButton = () => {
   document.getElementById('lang').textContent = `${LANG_FLAGS[lang]} ${lang.toUpperCase()} ▾`;
-  document.getElementById('tagline').textContent = dict[lang].tagline;
   document.documentElement.lang = lang;
 };
 
