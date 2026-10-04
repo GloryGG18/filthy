@@ -241,3 +241,31 @@ test('Russian is the default language and a guest can switch it', async () => {
   assert.equal(after.user.lang, 'uk');
   assert.equal(after.user.lang_chosen, true);
 });
+
+test('admin removes a poster and deletes an event only while nothing is paid', async () => {
+  const ev = (await call(ADMIN, 'POST', '/api/admin/events', { title: 'Temp', starts_at: Date.now() + 86400_000, status: 'published' })).body;
+  const png = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000', 'hex');
+  const boundary = 'b0undary';
+  const form = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="poster"; filename="p.png"\r\nContent-Type: image/png\r\n\r\n`),
+    png, Buffer.from(`\r\n--${boundary}--\r\n`),
+  ]);
+  const up = await app.inject({ method: 'POST', url: `/api/admin/events/${ev.id}/poster`, headers: { 'x-dev-user': '1', 'content-type': `multipart/form-data; boundary=${boundary}` }, payload: form });
+  assert.equal(up.statusCode, 200);
+  const file = path.join(dir, 'uploads', path.basename(up.json().poster));
+  assert.ok(fs.existsSync(file));
+
+  assert.equal((await call(GUEST, 'DELETE', `/api/admin/events/${ev.id}/poster`)).status, 403);
+  assert.equal((await call(ADMIN, 'DELETE', `/api/admin/events/${ev.id}/poster`)).status, 200);
+  assert.equal((await call(GUEST, 'GET', `/api/events/${ev.id}`)).body.poster, null);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.ok(!fs.existsSync(file));
+
+  // An unpaid reservation does not block deletion; a paid ticket does.
+  await call(GUEST, 'POST', '/api/tickets', { event_id: ev.id, tier: 'online' });
+  assert.equal((await call(ADMIN, 'DELETE', `/api/admin/events/${ev.id}`)).status, 200);
+  assert.equal((await call(GUEST, 'GET', `/api/events/${ev.id}`)).status, 404);
+  const del = await call(ADMIN, 'DELETE', `/api/admin/events/${event.id}`);
+  assert.equal(del.status, 409);
+  assert.equal(del.body.error, 'event_has_sales');
+});

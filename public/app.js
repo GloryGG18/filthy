@@ -599,6 +599,14 @@ async function adminEventForm(id) {
       toast('✓'); go('admin/events');
     } catch (err) { toast(err.message); }
   };
+  const removePoster = async () => {
+    if (!(await confirmBox(t.remove_poster_q))) return;
+    try { await api(`/api/admin/events/${id}/poster`, { method: 'DELETE' }); toast('✓'); route(); } catch (err) { toast(err.message); }
+  };
+  const deleteEvent = async () => {
+    if (!(await confirmBox(t.delete_event_q))) return;
+    try { await api(`/api/admin/events/${id}`, { method: 'DELETE' }); haptic('success'); toast('✓'); go('admin/events'); } catch (err) { toast(err.message); }
+  };
   const broadcast = async () => {
     if (!(await confirmBox(t.broadcast_q))) return;
     try { const r = await api(`/api/admin/events/${id}/broadcast`, { body: {} }); toast(t.broadcast_done(r.queued)); } catch (err) { toast(err.message); }
@@ -607,6 +615,7 @@ async function adminEventForm(id) {
   render(h('div', { class: 'stack' },
     h('h1', {}, e ? e.title : t.new_event),
     e?.poster ? h('img', { class: 'poster', src: e.poster, alt: '', style: 'max-height:240px;object-fit:contain' }) : null,
+    e?.poster ? h('button', { class: 'btn sm secondary', onclick: removePoster }, `🗑 ${t.remove_poster}`) : null,
     h('div', { class: 'card' },
       field('title', t.title, inp(e?.title)),
       field('starts_at', t.starts_at, inp(e ? toLocal(e.starts_at) : '', { type: 'datetime-local' })),
@@ -625,7 +634,8 @@ async function adminEventForm(id) {
       h('div', { class: 'field' }, h('label', {}, 'Status'), status)),
     h('button', { class: 'btn', onclick: save }, t.save),
     id ? h('button', { class: 'btn secondary', onclick: broadcast }, `📣 ${t.broadcast}`) : null,
-    id ? h('a', { class: 'btn secondary', href: `#admin/events/${id}/report` }, t.report) : null));
+    id ? h('a', { class: 'btn secondary', href: `#admin/events/${id}/report` }, t.report) : null,
+    id ? h('button', { class: 'btn ghost', style: 'color:var(--bad)', onclick: deleteEvent }, `🗑 ${t.delete_event}`) : null));
 }
 
 async function adminReport(id) {

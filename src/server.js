@@ -8,7 +8,7 @@ import multipart from '@fastify/multipart';
 import { webhookCallback } from 'grammy';
 import QRCode from 'qrcode';
 import { config } from './config.js';
-import { get, all, run, now } from './db.js';
+import { get, all, run, now, tx } from './db.js';
 import { authenticate, displayName } from './auth.js';
 import {
   AppError, createTicket, startPayment, cancelTicket, markPaid, qrPayload, takenSeats, scan, doorSale,
@@ -47,6 +47,10 @@ async function ticketView(t, withQr = true) {
     uah_expected: t.uah_expected, proof, event: publicEvent(ev),
     qr: valid && withQr ? await QRCode.toString(qrPayload(t.code), { type: 'svg', margin: 1, errorCorrectionLevel: 'Q' }) : null,
   };
+}
+
+function removeUpload(name) {
+  if (name) fs.rm(path.join(UPLOADS, path.basename(name)), { force: true }, () => {});
 }
 
 async function saveUpload(part, prefix) {
@@ -240,8 +244,39 @@ export async function buildServer() {
     const part = await req.file();
     if (!part) throw new AppError('file_required');
     const name = await saveUpload(part, 'poster');
+    const old = get('SELECT poster FROM events WHERE id = ?', Number(req.params.id))?.poster;
     run('UPDATE events SET poster = ? WHERE id = ?', name, Number(req.params.id));
+    removeUpload(old);
     return { poster: `/posters/${name}` };
+  });
+
+  app.delete('/api/admin/events/:id/poster', admin, async (req) => {
+    const e = get('SELECT poster FROM events WHERE id = ?', Number(req.params.id));
+    if (!e) throw new AppError('not_found', 404);
+    run('UPDATE events SET poster = NULL WHERE id = ?', Number(req.params.id));
+    removeUpload(e.poster);
+    return { ok: true };
+  });
+
+  // Only events nobody has paid for can be deleted; otherwise money and the cash report would lose their event.
+  app.delete('/api/admin/events/:id', admin, async (req) => {
+    const id = Number(req.params.id);
+    const e = get('SELECT * FROM events WHERE id = ?', id);
+    if (!e) throw new AppError('not_found', 404);
+    const money = get(
+      `SELECT COUNT(*) AS n FROM tickets t WHERE t.event_id = ?
+         AND (t.status IN ('paid', 'used') OR EXISTS (SELECT 1 FROM payments p WHERE p.ticket_id = t.id))`, id).n;
+    if (money) throw new AppError('event_has_sales', 409);
+    const proofs = all('SELECT p.story_file, p.profile_file FROM repost_proofs p JOIN tickets t ON t.id = p.ticket_id WHERE t.event_id = ?', id);
+    tx(() => {
+      run('DELETE FROM repost_proofs WHERE ticket_id IN (SELECT id FROM tickets WHERE event_id = ?)', id);
+      run('DELETE FROM scans WHERE event_id = ?', id);
+      run('DELETE FROM cash_counts WHERE event_id = ?', id);
+      run('DELETE FROM tickets WHERE event_id = ?', id);
+      run('DELETE FROM events WHERE id = ?', id);
+    });
+    for (const f of [e.poster, ...proofs.flatMap((p) => [p.story_file, p.profile_file])]) removeUpload(f);
+    return { ok: true };
   });
 
   app.post('/api/admin/events/:id/broadcast', admin, async (req) => {

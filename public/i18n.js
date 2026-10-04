@@ -57,7 +57,7 @@ export const dict = {
     a_events: 'Події', a_approvals: 'Репости', a_payments: 'Платежі', a_staff: 'Команда', a_search: 'Пошук квитка',
     new_event: 'Нова подія', save: 'Зберегти', title: 'Назва', description: 'Опис', club: 'Клуб', city: 'Місто', address: 'Адреса',
     starts_at: 'Початок', price_online: 'Онлайн, €', price_repost: 'З репостом, €', price_door: 'На вході, €', capacity: 'Ліміт квитків',
-    age_limit: 'Вік', poster: 'Афіша', st_draft: 'Чернетка', st_published: 'Опубліковано', st_closed: 'Закрито',
+    age_limit: 'Вік', poster: 'Афіша', remove_poster: 'Прибрати афішу', remove_poster_q: 'Прибрати афішу з події?', delete_event: 'Видалити подію', delete_event_q: 'Видалити подію назавжди? Неоплачені бронювання теж зникнуть.', st_draft: 'Чернетка', st_published: 'Опубліковано', st_closed: 'Закрито',
     broadcast: 'Розіслати анонс', broadcast_q: 'Надіслати анонс усім підписникам бота?', broadcast_done: (n) => `Розсилка запущена: ${n} отримувачів`,
     report: 'Звіт по касі', approve: 'Схвалити', reject: 'Відхилити', no_approvals: 'Немає репостів на перевірці',
     no_payments: 'Усі платежі розібрані', resolve: 'Позначити розібраним', attach: 'Привʼязати до квитка',
@@ -123,7 +123,7 @@ export const dict = {
     a_events: 'События', a_approvals: 'Репосты', a_payments: 'Платежи', a_staff: 'Команда', a_search: 'Поиск билета',
     new_event: 'Новое событие', save: 'Сохранить', title: 'Название', description: 'Описание', club: 'Клуб', city: 'Город', address: 'Адрес',
     starts_at: 'Начало', price_online: 'Онлайн, €', price_repost: 'С репостом, €', price_door: 'На входе, €', capacity: 'Лимит билетов',
-    age_limit: 'Возраст', poster: 'Афиша', st_draft: 'Черновик', st_published: 'Опубликовано', st_closed: 'Закрыто',
+    age_limit: 'Возраст', poster: 'Афиша', remove_poster: 'Убрать афишу', remove_poster_q: 'Убрать афишу из события?', delete_event: 'Удалить событие', delete_event_q: 'Удалить событие навсегда? Неоплаченные брони тоже исчезнут.', st_draft: 'Черновик', st_published: 'Опубликовано', st_closed: 'Закрыто',
     broadcast: 'Разослать анонс', broadcast_q: 'Отправить анонс всем подписчикам бота?', broadcast_done: (n) => `Рассылка запущена: ${n} получателей`,
     report: 'Отчёт по кассе', approve: 'Одобрить', reject: 'Отклонить', no_approvals: 'Нет репостов на проверке',
     no_payments: 'Все платежи разобраны', resolve: 'Отметить разобранным', attach: 'Привязать к билету',
@@ -189,7 +189,7 @@ export const dict = {
     a_events: 'Events', a_approvals: 'Reposts', a_payments: 'Payments', a_staff: 'Team', a_search: 'Find ticket',
     new_event: 'New event', save: 'Save', title: 'Title', description: 'Description', club: 'Club', city: 'City', address: 'Address',
     starts_at: 'Starts', price_online: 'Online, €', price_repost: 'With repost, €', price_door: 'At the door, €', capacity: 'Ticket limit',
-    age_limit: 'Age', poster: 'Poster', st_draft: 'Draft', st_published: 'Published', st_closed: 'Closed',
+    age_limit: 'Age', poster: 'Poster', remove_poster: 'Remove poster', remove_poster_q: 'Remove the poster from this event?', delete_event: 'Delete event', delete_event_q: 'Delete this event for good? Unpaid reservations go too.', st_draft: 'Draft', st_published: 'Published', st_closed: 'Closed',
     broadcast: 'Send announcement', broadcast_q: 'Send the announcement to all bot subscribers?', broadcast_done: (n) => `Broadcast started: ${n} recipients`,
     report: 'Cash report', approve: 'Approve', reject: 'Reject', no_approvals: 'No reposts to review',
     no_payments: 'All payments handled', resolve: 'Mark handled', attach: 'Attach to ticket',
@@ -203,9 +203,9 @@ export const dict = {
 };
 
 export const errors = {
-  uk: { sold_out: 'Квитки розпродано', sales_closed: 'Продаж закрито', not_payable: 'Цей квиток не можна оплатити', unauthorized: 'Відкрий застосунок через бота в Telegram', file_too_large: 'Файл завеликий (до 10 МБ)', bad_file_type: 'Потрібне зображення JPG або PNG', user_not_found: 'Користувача не знайдено. Він має спершу відкрити бота.', publish_first: 'Спершу опублікуй подію', bad_iban: 'Невірний IBAN', bad_url: 'Посилання має починатися з https://', bad_tolerance: 'Частка має бути від 0 до 1', monobank_unreachable: 'monobank не відповідає або токен невірний' },
-  ru: { sold_out: 'Билеты распроданы', sales_closed: 'Продажа закрыта', not_payable: 'Этот билет нельзя оплатить', unauthorized: 'Открой приложение через бота в Telegram', file_too_large: 'Файл слишком большой (до 10 МБ)', bad_file_type: 'Нужно изображение JPG или PNG', user_not_found: 'Пользователь не найден. Он должен сначала открыть бота.', publish_first: 'Сначала опубликуй событие', bad_iban: 'Неверный IBAN', bad_url: 'Ссылка должна начинаться с https://', bad_tolerance: 'Доля должна быть от 0 до 1', monobank_unreachable: 'monobank не отвечает или токен неверный' },
-  en: { sold_out: 'Sold out', sales_closed: 'Sales are closed', not_payable: 'This ticket can’t be paid', unauthorized: 'Open the app via the Telegram bot', file_too_large: 'File too large (max 10 MB)', bad_file_type: 'Use a JPG or PNG image', user_not_found: 'User not found. They need to open the bot first.', publish_first: 'Publish the event first', bad_iban: 'Invalid IBAN', bad_url: 'Link must start with https://', bad_tolerance: 'Share must be between 0 and 1', monobank_unreachable: 'monobank is unreachable or the token is wrong' },
+  uk: { sold_out: 'Квитки розпродано', sales_closed: 'Продаж закрито', not_payable: 'Цей квиток не можна оплатити', unauthorized: 'Відкрий застосунок через бота в Telegram', file_too_large: 'Файл завеликий (до 10 МБ)', bad_file_type: 'Потрібне зображення JPG або PNG', user_not_found: 'Користувача не знайдено. Він має спершу відкрити бота.', publish_first: 'Спершу опублікуй подію', bad_iban: 'Невірний IBAN', bad_url: 'Посилання має починатися з https://', bad_tolerance: 'Частка має бути від 0 до 1', monobank_unreachable: 'monobank не відповідає або токен невірний', event_has_sales: 'На подію вже є оплачені квитки, її не можна видалити. Постав статус «Закрито» або «Чернетка», щоб сховати.' },
+  ru: { sold_out: 'Билеты распроданы', sales_closed: 'Продажа закрыта', not_payable: 'Этот билет нельзя оплатить', unauthorized: 'Открой приложение через бота в Telegram', file_too_large: 'Файл слишком большой (до 10 МБ)', bad_file_type: 'Нужно изображение JPG или PNG', user_not_found: 'Пользователь не найден. Он должен сначала открыть бота.', publish_first: 'Сначала опубликуй событие', bad_iban: 'Неверный IBAN', bad_url: 'Ссылка должна начинаться с https://', bad_tolerance: 'Доля должна быть от 0 до 1', monobank_unreachable: 'monobank не отвечает или токен неверный', event_has_sales: 'На событие уже есть оплаченные билеты, его нельзя удалить. Поставь статус «Закрыто» или «Черновик», чтобы скрыть.' },
+  en: { sold_out: 'Sold out', sales_closed: 'Sales are closed', not_payable: 'This ticket can’t be paid', unauthorized: 'Open the app via the Telegram bot', file_too_large: 'File too large (max 10 MB)', bad_file_type: 'Use a JPG or PNG image', user_not_found: 'User not found. They need to open the bot first.', publish_first: 'Publish the event first', bad_iban: 'Invalid IBAN', bad_url: 'Link must start with https://', bad_tolerance: 'Share must be between 0 and 1', monobank_unreachable: 'monobank is unreachable or the token is wrong', event_has_sales: 'This event already has paid tickets, so it can’t be deleted. Set it to Closed or Draft to hide it.' },
 };
 
 export const LANG_NAMES = { ru: 'Русский', uk: 'Українська', en: 'English' };
