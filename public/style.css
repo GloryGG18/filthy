@@ -93,3 +93,5 @@ button { font-family: inherit; color: inherit; }
 .help summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .help ol { padding-left: 20px; margin: 8px 0 10px; line-height: 1.45; }
 .help li { margin-bottom: 4px; }
+.notice { border-radius: 14px; padding: 12px 14px; font-size: 14px; line-height: 1.4; }
+.notice.warn { background: rgba(255,176,32,.14); border: 1px solid rgba(255,176,32,.5); color: var(--text); }

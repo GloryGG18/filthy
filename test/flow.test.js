@@ -303,6 +303,11 @@ test('card mode: unique UAH amounts identify transfers without a comment; other 
   assert.equal((await call(DOOR, 'GET', `/api/tickets/${b.tk.id}`)).body.status, 'paid');
   assert.equal((await call(GUEST, 'GET', `/api/tickets/${a.tk.id}`)).body.status, 'awaiting_payment');
   assert.equal((await call(ADMIN, 'GET', '/api/admin/payments')).body.length, before, 'unrelated card income is not flagged');
+  assert.equal(a.pay.comment, a.tk.code, 'card mode asks for the ticket number in the comment');
+  await call(null, 'POST', '/hooks/monobank/hook', {
+    type: 'StatementItem', data: { account: 'card-acc', statementItem: { id: 'c-3', time: Math.floor(Date.now() / 1000), amount: a.pay.uah - (a.pay.uah % 100) + 100, comment: a.tk.code } },
+  });
+  assert.equal((await call(GUEST, 'GET', `/api/tickets/${a.tk.id}`)).body.status, 'paid', 'the comment matches even when kopecks are dropped');
 
   await set({ mono_mode: 'jar' });
 });

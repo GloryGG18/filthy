@@ -275,7 +275,9 @@ async function pageTicket(id, method) {
       ...(pay.monobank.mode === 'card' ? [
         h('div', { class: 'card fields' },
           fieldRow(t.card_no, pay.monobank.card, pay.monobank.card.replace(/\s/g, '')),
-          fieldRow(t.exact_amount, uah(pay.monobank.uah), (pay.monobank.uah / 100).toFixed(2))),
+          fieldRow(t.exact_amount, uah(pay.monobank.uah), (pay.monobank.uah / 100).toFixed(2)),
+          fieldRow(h('b', { style: 'color:var(--warn)' }, t.comment_required), h('b', {}, pay.monobank.comment), pay.monobank.comment)),
+        h('div', { class: 'notice warn' }, t.mono_comment_required(pay.monobank.comment)),
         h('p', { class: 'small muted' }, t.mono_card_steps),
       ] : [
         h('div', { class: 'card fields' },
