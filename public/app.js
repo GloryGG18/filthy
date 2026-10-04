@@ -337,6 +337,7 @@ async function pageDoor(eventId) {
     const events = await api('/api/door/events');
     if (events.length === 1) return go(`door/${events[0].id}`);
     return render(h('div', { class: 'stack' }, h('h1', {}, t.choose_event),
+      events.length ? null : h('p', { class: 'muted center' }, t.no_door_events),
       events.map((e) => h('a', { class: 'card link', href: `#door/${e.id}` },
         h('div', { class: 'date' }, fmtDate(e.starts_at)), h('h3', {}, e.title), h('span', { class: 'muted small' }, `${t.entered}: ${e.entered}`)))));
   }

@@ -192,9 +192,10 @@ export async function buildServer() {
   });
 
   // ----- door staff -----
+  // Every published party that hasn't finished yet (a night runs past midnight, so keep it for 36 h), soonest first.
   app.get('/api/door/events', staff, async () =>
-    all(`SELECT * FROM events WHERE status != 'draft' AND starts_at BETWEEN ? AND ? ORDER BY starts_at`,
-      now() - 36 * 3600_000, now() + 7 * 24 * 3600_000).map((e) => ({ ...publicEvent(e), entered: enteredCount(e.id) })));
+    all(`SELECT * FROM events WHERE status != 'draft' AND starts_at > ? ORDER BY starts_at`, now() - 36 * 3600_000)
+      .map((e) => ({ ...publicEvent(e), entered: enteredCount(e.id) })));
 
   app.post('/api/door/scan', staff, async (req) => scan(req.user, Number(req.body?.event_id), req.body?.text));
 
