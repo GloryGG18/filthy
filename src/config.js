@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -58,11 +59,19 @@ export const config = {
     tolerance: Number(env.MONO_TOLERANCE || 0.98),
     // Used when the monobank rate API is unreachable.
     fallbackRate: Number(env.MONO_FALLBACK_RATE || 48),
-    webhookSecret: env.MONO_WEBHOOK_SECRET || 'mono',
+    // monobank webhooks are unsigned, so the secret URL path is what stops forged "payments".
+    webhookSecret: env.MONO_WEBHOOK_SECRET || crypto.createHash('sha256').update(`${env.QR_SECRET || 'dev'}:mono`).digest('hex').slice(0, 24),
   },
 
   reminderHour: Number(env.REMINDER_HOUR || 12),
   timezone: env.TZ || 'Europe/Bratislava',
 };
+
+// A public deployment must not run with the default QR secret (anyone could forge tickets)
+// or with dev login enabled (anyone could pose as any user).
+if (config.publicUrl.startsWith('https://')) {
+  if (!env.QR_SECRET || env.QR_SECRET.length < 16) throw new Error('Set QR_SECRET to a random string of 16+ characters');
+  if (config.devAuth) throw new Error('DEV_AUTH must be off on a public deployment');
+}
 
 export const isAdminId = (id) => config.adminIds.includes(Number(id));
