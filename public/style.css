@@ -88,3 +88,8 @@ button { font-family: inherit; color: inherit; }
 .lang { text-transform: none; font-size: 13px; padding: 6px 12px; color: var(--text); }
 .sheet-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 40; display: flex; align-items: flex-end; justify-content: center; }
 .sheet { background: var(--card); border-top: 1px solid var(--line); border-radius: 20px 20px 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); width: 100%; max-width: 560px; display: grid; gap: 10px; }
+
+.help { margin: 4px 0 10px; font-size: 14px; color: var(--muted); }
+.help summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.help ol { padding-left: 20px; margin: 8px 0 10px; line-height: 1.45; }
+.help li { margin-bottom: 4px; }

@@ -560,6 +560,11 @@ async function adminSettings(fill) {
       secret('tatra_client_secret', 'Tatra banka client secret'),
       text('tatra_account_id', 'Tatra banka account ID')),
     h('div', { class: 'card' }, h('h3', {}, 'monobank'),
+      h('details', { class: 'help' }, h('summary', {}, t.s_mono_how),
+        h('ol', {}, t.s_mono_steps.map((step) => h('li', {}, step))),
+        h('a', { class: 'btn sm secondary', href: 'https://api.monobank.ua/', target: '_blank', onclick: (e) => {
+          if (tg?.openLink) { e.preventDefault(); tg.openLink('https://api.monobank.ua/'); }
+        } }, 'api.monobank.ua ↗')),
       secret('mono_token', t.s_mono_token),
       h('button', { class: 'btn sm secondary', style: 'margin-top:10px', onclick: findJars }, t.s_find_jars),
       jars,
