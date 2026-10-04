@@ -96,7 +96,7 @@ function every(ms, fn) {
 }
 
 const view = () => document.getElementById('app');
-const render = (...nodes) => view().replaceChildren(...nodes);
+const render = (...nodes) => view().replaceChildren(...nodes.flat());
 const loading = () => render(h('div', { class: 'spinner' }));
 const go = (hash) => { location.hash = hash; };
 
@@ -417,7 +417,7 @@ async function pageAdmin(section = 'events', id, sub) {
   if (section === 'events' && id) return adminEventForm(id);
   const body = h('div', { class: 'stack' });
   render(h('div', { class: 'stack' }, adminNav(section), body));
-  const fill = (...n) => body.replaceChildren(...n);
+  const fill = (...n) => body.replaceChildren(...n.flat());
 
   if (section === 'events') {
     const events = await api('/api/admin/events');
